@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package codecompa.v1;
+
+option go_package = "github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1;apiv1";
+
+service CompanionService {
+  // The mobile app calls this stream to receive real-time events from the AI agent
+  rpc StreamAgentEvents(StreamAgentEventsRequest) returns (stream AgentEvent);
+  
+  // The mobile app responds to a pending human intervention request
+  rpc RespondToIntervention(RespondToInterventionRequest) returns (RespondToInterventionResponse);
+}
+
+message StreamAgentEventsRequest {}
+
+message AgentEvent {
+  string event_id = 1;
+  string type = 2; // e.g. "COMMAND_EXECUTION_REQUEST"
+  AgentMetadata metadata = 3;
+  AgentPayload payload = 4;
+}
+
+message AgentMetadata {
+  string ide = 1;         // e.g. "Antigravity_2.0"
+  string agent_name = 2;  // e.g. "Claude-Code-Agent"
+  int64 timestamp = 3;
+}
+
+message AgentPayload {
+  string title = 1;
+  string description = 2;
+  string command = 3;
+  string directory = 4;
+  string risk_level = 5;
+  repeated DecisionOption options = 6;
+  bool allows_text_input = 7;
+}
+
+message DecisionOption {
+  string id = 1;
+  string label = 2;
+}
+
+message RespondToInterventionRequest {
+  string event_id = 1;
+  string selected_option_id = 2;
+  string feedback_text = 3;
+}
+
+message RespondToInterventionResponse {
+  bool success = 1;
+}

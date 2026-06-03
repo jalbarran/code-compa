@@ -1,0 +1,10 @@
+{
+  "name": "code-compa-proto-ts",
+  "version": "0.0.1",
+  "main": "./src/proto/codecompa/v1/companion_pb.ts",
+  "types": "./src/proto/codecompa/v1/companion_pb.ts",
+  "dependencies": {
+    "@bufbuild/protobuf": "^1.8.0",
+    "@connectrpc/connect": "^1.4.0"
+  }
+}
