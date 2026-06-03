@@ -1,0 +1,7 @@
+{
+  "Code Compa sidecar binary not found at: {0}. Please build it first.": "No se encontró el binario sidecar de Code Compa en: {0}. Por favor, compílelo primero.",
+  "Code Compa Bridge started successfully on port {0}": "El puente de Code Compa se inició correctamente en el puerto {0}.",
+  "Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.": "El puente de Code Compa ya se está ejecutando para este espacio de trabajo en el puerto {0}. Reutilizando instancia.",
+  "Code Compa Bridge failed to start or crashed repeatedly.": "El puente de Code Compa falló al iniciar o se cayó repetidamente.",
+  "Restart Bridge": "Reiniciar Puente"
+}

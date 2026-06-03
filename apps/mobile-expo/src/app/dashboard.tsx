@@ -1,0 +1,214 @@
+import React, { useState } from 'react';
+import { ScrollView } from 'react-native';
+import { YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Theme } from 'tamagui';
+import { useConnectionStore } from '../store/useConnectionStore';
+import { useTranslation } from 'react-i18next';
+
+export default function DashboardScreen() {
+  const { t } = useTranslation();
+  const { ip, port, status, queue, history, disconnect, respond } = useConnectionStore();
+  const [feedback, setFeedback] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+
+  const handleAction = async (eventId: string, optionId: string) => {
+    setSubmittingId(eventId);
+    try {
+      await respond(eventId, optionId, feedback);
+      setFeedback('');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'CONNECTED': return '$green10';
+      case 'CONNECTING': return '$yellow10';
+      case 'RECONNECTING': return '$yellow10';
+      case 'ERROR': return '$red10';
+      default: return '$gray10';
+    }
+  };
+
+  const getRiskColor = (risk: string) => {
+    switch (risk.toUpperCase()) {
+      case 'HIGH': return '$red10';
+      case 'MEDIUM': return '$orange10';
+      case 'LOW': return '$blue10';
+      default: return '$gray10';
+    }
+  };
+
+  const currentEvent = queue[0];
+
+  return (
+    <YStack f={1} bg="$background" p="$4" pt="$8">
+      {/* Header section */}
+      <XStack jc="space-between" ai="center" mb="$4">
+        <YStack>
+          <Text fos="$6" fow="bold" col="$color">Code Compa</Text>
+          <XStack ai="center" gap="$2">
+            <Circle size={10} bg={getStatusColor()} />
+            <Text col="$colorMuted" fos="$2">
+              {status} • {ip}:{port}
+            </Text>
+          </XStack>
+        </YStack>
+        <Button size="$3" variant="outlined" onPress={disconnect}>
+          {t('dashboard.disconnect')}
+        </Button>
+      </XStack>
+
+      <Separator />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
+        {currentEvent ? (
+          <YStack gap="$4">
+            <Card elevation="$4" borderWidth={1} p="$4" gap="$3" theme="dark" bg="$backgroundPress">
+              <Card.Header>
+                <XStack jc="space-between" ai="center">
+                  <YStack>
+                    <Text fos="$3" col="$colorMuted" fow="bold">
+                      {currentEvent.metadata?.ide || t('dashboard.ideAgent')}
+                    </Text>
+                    <Text fos="$4" fow="bold">
+                      {currentEvent.metadata?.agentName || t('dashboard.agentRequest')}
+                    </Text>
+                  </YStack>
+                  <XStack bg={getRiskColor(currentEvent.payload?.riskLevel || 'LOW')} px="$2.5" py="$1" br="$4">
+                    <Text col="white" fow="bold" fos="$2" textTransform="uppercase">
+                      {t('dashboard.risk', { level: currentEvent.payload?.riskLevel || 'LOW' })}
+                    </Text>
+                  </XStack>
+                </XStack>
+              </Card.Header>
+
+              <YStack gap="$2" my="$2">
+                <Text fos="$5" fow="bold" col="$color">
+                  {currentEvent.payload?.title || t('dashboard.actionRequest')}
+                </Text>
+                <Text col="$colorMuted" fos="$3">
+                  {currentEvent.payload?.description}
+                </Text>
+
+                {currentEvent.payload?.directory && (
+                  <YStack bg="$background" p="$2" br="$2" mt="$2">
+                    <Text fos="$2" col="$colorMuted" fow="bold">{t('dashboard.directory')}</Text>
+                    <Text fos="$3" col="$color" ff="$mono">{currentEvent.payload.directory}</Text>
+                  </YStack>
+                )}
+
+                {currentEvent.payload?.command && (
+                  <YStack bg="$background" p="$3" br="$2" mt="$2">
+                    <Text fos="$2" col="$colorMuted" fow="bold" mb="$1">{t('dashboard.commandToExecute')}</Text>
+                    <Text fos="$3" col="$green10" ff="$mono">{currentEvent.payload.command}</Text>
+                  </YStack>
+                )}
+              </YStack>
+
+              {currentEvent.payload?.allowsTextInput && (
+                <YStack gap="$2" my="$2">
+                  <Text fos="$3" fow="bold">{t('dashboard.customInstructions')}</Text>
+                  <Input
+                    value={feedback}
+                    onChangeText={setFeedback}
+                    placeholder={t('dashboard.feedbackPlaceholder')}
+                  />
+                </YStack>
+              )}
+
+              <Card.Footer mt="$4">
+                <XStack f={1} gap="$2">
+                  {currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
+                    currentEvent.payload.options.map((opt) => (
+                      <Button
+                        key={opt.id}
+                        f={1}
+                        theme={opt.id.toLowerCase().includes('approve') || opt.id.toLowerCase().includes('yes') ? 'active' : undefined}
+                        disabled={submittingId !== null}
+                        onPress={() => handleAction(currentEvent.eventId, opt.id)}
+                      >
+                        {submittingId === currentEvent.eventId ? <Spinner /> : opt.label}
+                      </Button>
+                    ))
+                  ) : (
+                    <>
+                      <Button
+                        f={1}
+                        variant="outlined"
+                        theme="alt1"
+                        disabled={submittingId !== null}
+                        onPress={() => handleAction(currentEvent.eventId, 'REJECT')}
+                      >
+                        {t('dashboard.reject')}
+                      </Button>
+                      <Button
+                        f={1}
+                        theme="active"
+                        disabled={submittingId !== null}
+                        onPress={() => handleAction(currentEvent.eventId, 'APPROVE')}
+                      >
+                        {submittingId === currentEvent.eventId ? <Spinner color="white" /> : t('dashboard.approve')}
+                      </Button>
+                    </>
+                  )}
+                </XStack>
+              </Card.Footer>
+            </Card>
+
+            {queue.length > 1 && (
+              <YStack bg="$backgroundPress" p="$3" br="$4" gap="$1">
+                <Text fow="bold" fos="$3" col="$colorMuted">
+                  {t('dashboard.pendingQueue', { count: queue.length - 1 })}
+                </Text>
+                {queue.slice(1).map((ev) => (
+                  <XStack key={ev.eventId} jc="space-between" ai="center" py="$2">
+                    <Text fos="$3" col="$color" numberOfLines={1} style={{ flex: 1 }}>
+                      {ev.payload?.title || ev.type}
+                    </Text>
+                    <Text fos="$2" col="$colorMuted" ml="$2">
+                      {ev.metadata?.agentName}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+            )}
+          </YStack>
+        ) : (
+          <YStack ai="center" jc="center" py="$8" gap="$3">
+            <Circle size={80} bg="$backgroundPress" jc="center" ai="center">
+              <Text fos="$8">🛡️</Text>
+            </Circle>
+            <Text fow="bold" fos="$5" col="$color">{t('dashboard.allClear')}</Text>
+            <Text col="$colorMuted" ta="center">
+              {t('dashboard.autonomousDescription')}
+            </Text>
+          </YStack>
+        )}
+
+        {history.length > 0 && (
+          <YStack mt="$6" gap="$3">
+            <Text fow="bold" fos="$4" col="$colorMuted">{t('dashboard.sessionHistory')}</Text>
+            <Separator />
+            {history.map((h) => (
+              <Card key={h.eventId} borderWidth={1} p="$3" theme="dark">
+                <XStack jc="space-between" ai="center">
+                  <YStack f={1}>
+                    <Text fos="$3" fow="bold" col="$color" numberOfLines={1}>
+                      {h.payload?.title || h.type}
+                    </Text>
+                    <Text fos="$2" col="$colorMuted">
+                      {t('dashboard.resolved')} • {h.metadata?.agentName}
+                    </Text>
+                  </YStack>
+                  <Text col="$green10" fow="bold" fos="$2">{t('dashboard.resolvedUppercase')}</Text>
+                </XStack>
+              </Card>
+            ))}
+          </YStack>
+        )}
+      </ScrollView>
+    </YStack>
+  );
+}
+

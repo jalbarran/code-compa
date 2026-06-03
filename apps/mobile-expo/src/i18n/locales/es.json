@@ -1,0 +1,41 @@
+{
+  "scan": {
+    "loadingPermissions": "Cargando permisos de cámara...",
+    "permissionRequired": "Permiso de Cámara Requerido",
+    "permissionDescription": "Necesitamos acceso a su cámara para escanear el código QR de emparejamiento.",
+    "grantPermission": "Otorgar Permiso",
+    "enterDetailsManually": "Ingresar Detalles Manualmente",
+    "connectManually": "Conectar Manualmente",
+    "enterParameters": "Ingrese los parámetros de conexión del puente",
+    "ipAddress": "Dirección IP",
+    "port": "Puerto",
+    "token": "Token",
+    "useScanner": "Usar Escáner",
+    "connect": "Conectar",
+    "scanQrCode": "Escanear Código QR",
+    "alignQrCode": "Alinee el código QR mostrado en la ventana de su IDE dentro del escáner",
+    "connectingToBridge": "Conectando al Puente...",
+    "invalidQr": "Estructura de carga útil de QR no válida",
+    "failedToParseQr": "Error al analizar el código QR",
+    "failedToConnect": "Error al conectar"
+  },
+  "dashboard": {
+    "disconnect": "Desconectar",
+    "ideAgent": "Agente de IDE",
+    "agentRequest": "Solicitud del Agente",
+    "risk": "RIESGO {{level}}",
+    "actionRequest": "Solicitud de Acción",
+    "directory": "Directorio",
+    "commandToExecute": "Comando a Ejecutar",
+    "customInstructions": "Instrucciones Personalizadas / Retroalimentación",
+    "feedbackPlaceholder": "Proporcione corrección o instrucciones opcionales...",
+    "reject": "Rechazar",
+    "approve": "Aprobar",
+    "pendingQueue": "Cola de Pendientes ({{count}} más)",
+    "allClear": "Todo Despejado",
+    "autonomousDescription": "El agente se está ejecutando de forma autónoma en su IDE. Las solicitudes de intervención pendientes se transmitirán aquí.",
+    "sessionHistory": "Historial de Sesión",
+    "resolved": "Resuelto",
+    "resolvedUppercase": "RESUELTO"
+  }
+}

@@ -83,7 +83,7 @@ function startSidecar(context: vscode.ExtensionContext) {
 
   if (!fs.existsSync(binPath)) {
     vscode.window.showErrorMessage(
-      `Code Compa sidecar binary not found at: ${binPath}. Please build it first.`
+      vscode.l10n.t("Code Compa sidecar binary not found at: {0}. Please build it first.", binPath)
     );
     return;
   }
@@ -121,12 +121,12 @@ function startSidecar(context: vscode.ExtensionContext) {
           
           if (config.status === 'READY') {
             vscode.window.showInformationMessage(
-              `Code Compa Bridge started successfully on port ${sidecarPort}`
+              vscode.l10n.t("Code Compa Bridge started successfully on port {0}", sidecarPort!)
             );
             restartAttempts = 0; // reset on success
           } else if (config.status === 'ALREADY_RUNNING') {
             vscode.window.showInformationMessage(
-              `Code Compa Bridge is already running for this workspace on port ${sidecarPort}. Reusing instance.`
+              vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
             );
           }
         }
@@ -156,11 +156,12 @@ function handleSidecarCrash(context: vscode.ExtensionContext) {
     console.log(`Sidecar crashed. Retrying startup (attempt ${restartAttempts}/${maxRestartAttempts}) after 1s...`);
     setTimeout(() => startSidecar(context), 1000);
   } else {
+    const restartAction = vscode.l10n.t("Restart Bridge");
     vscode.window.showErrorMessage(
-      'Code Compa Bridge failed to start or crashed repeatedly.',
-      'Restart Bridge'
+      vscode.l10n.t("Code Compa Bridge failed to start or crashed repeatedly."),
+      restartAction
     ).then((choice) => {
-      if (choice === 'Restart Bridge') {
+      if (choice === restartAction) {
         restartAttempts = 0;
         startSidecar(context);
       }

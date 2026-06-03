@@ -13,6 +13,7 @@
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "l10n": "./l10n",
   "contributes": {},
   "scripts": {
     "vscode:prepublish": "npm run compile",

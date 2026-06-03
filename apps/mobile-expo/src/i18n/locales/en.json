@@ -1,0 +1,41 @@
+{
+  "scan": {
+    "loadingPermissions": "Loading camera permissions...",
+    "permissionRequired": "Camera Permission Required",
+    "permissionDescription": "We need access to your camera to scan the pairing QR code.",
+    "grantPermission": "Grant Permission",
+    "enterDetailsManually": "Enter Details Manually",
+    "connectManually": "Connect Manually",
+    "enterParameters": "Enter the bridge connection parameters",
+    "ipAddress": "IP Address",
+    "port": "Port",
+    "token": "Token",
+    "useScanner": "Use Scanner",
+    "connect": "Connect",
+    "scanQrCode": "Scan QR Code",
+    "alignQrCode": "Align the QR code shown in your IDE window inside the scanner",
+    "connectingToBridge": "Connecting to Bridge...",
+    "invalidQr": "Invalid QR payload structure",
+    "failedToParseQr": "Failed to parse QR code",
+    "failedToConnect": "Failed to connect"
+  },
+  "dashboard": {
+    "disconnect": "Disconnect",
+    "ideAgent": "IDE Agent",
+    "agentRequest": "Agent Request",
+    "risk": "{{level}} RISK",
+    "actionRequest": "Action Request",
+    "directory": "Directory",
+    "commandToExecute": "Command to Execute",
+    "customInstructions": "Custom Instructions / Feedback",
+    "feedbackPlaceholder": "Provide optional correction or instructions...",
+    "reject": "Reject",
+    "approve": "Approve",
+    "pendingQueue": "Pending Queue ({{count}} more)",
+    "allClear": "All Clear",
+    "autonomousDescription": "Agent is running autonomously in your IDE. Pending intervention requests will stream here.",
+    "sessionHistory": "Session History",
+    "resolved": "Resolved",
+    "resolvedUppercase": "RESOLVED"
+  }
+}
