@@ -35,6 +35,8 @@ The architecture supports two connection modes, configurable via the IDE plugin:
 | **IDE Plugins** | **TypeScript / Kotlin** | Thin native integration layers for each IDE (VS Code, JetBrains). Handles connection settings toggle. |
 | **Communication (Local)** | **Connect-RPC (HTTP/JSON)**| Low-latency, strongly-typed channel using unary calls and Server-Streaming over local Wi-Fi / Localhost. |
 | **Communication (Cloud)** | **Secure Cloud Tunnel** | Paid/Premium relay service over the internet (Option 2; backend in private repo). |
+| **Mobile i18n** | **i18next + react-i18next + expo-localization** | Internationalization library and user locale discovery on Android/iOS. |
+| **IDE Plugin i18n** | **@vscode/l10n** | Official VS Code APIs for localization using `.l10n.json` translation bundles. |
 
 ---
 
@@ -184,6 +186,12 @@ Tamagui works with standard Expo Go without requiring custom native builds, as i
 - The authentication and authorization protocol for the Secure Cloud Remote connection (Option 2) is **intentionally deferred** to the private backend repository that manages the cloud relay infrastructure.
 - **Principle:** The Go sidecar and mobile app will consume an auth token (format TBD by the private repo team). This repo only needs to know how to pass the token in Connect-RPC metadata headers — the token issuance, refresh, and revocation flows live in the private backend.
 - **Placeholder:** A dedicated spec (`specs/spec-XX-cloud-auth/`) will be created once the private backend API is stabilized, formally documenting the handshake contract between the public sidecar and the private relay.
+
+### 4.9. Internationalization (i18n)
+
+- **Mobile App:** To ensure the mobile application supports multiple languages (defaulting to English with easy expandability), we use `i18next` along with `react-i18next` for React Native bindings. Device language detection is managed via `expo-localization`. Translation resource files (JSON) are bundled locally in the application bundle.
+- **VS Code Extension:** To localize the VS Code extension, we use the official `@vscode/l10n` library. Strings are wrapped in `vscode.l10n.t(...)` calls. The target translations are stored in `.l10n.json` resource bundles located in the extension's package directory.
+- **Unified Standard:** No user-facing text should be hardcoded in any UI screen or extension command/notification. All strings must pass through their respective translation wrapper, pointing to a key in the translation bundle.
 
 ---
 
