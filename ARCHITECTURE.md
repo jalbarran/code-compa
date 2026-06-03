@@ -19,20 +19,22 @@ The architecture supports two connection modes, configurable via the IDE plugin:
 - **Local-First Privacy (by Default):** With Option 1, source code and repository context never leave the user's Local Area Network (LAN).
 - **Flexible Connectivity:** The plugin/extension offers a configuration to toggle between Local Wi-Fi and Cloud Remote modes.
 - **Multi-IDE Strategy:** An agnostic architecture capable of connecting the same mobile app to the most popular IDEs on the market.
+- **Cross-Platform UI Consistency:** The mobile app targets both Android and iOS with a pixel-consistent interface. A single shared UI codebase produces both native app versions — no platform-specific divergence in screens, components, or design tokens.
 - **Spec-driven Development:** All technical decisions, features, and implementation tasks (e.g. Go sidecar server setup, IDE settings UI toggle) must be fully documented as specifications under the `specs/` directory before writing code. Specs act as the blueprint that implementations must fulfill.
 
 ---
 
 ## 2. Tech Stack
 
-| Component                 | Technology                  | Role                                                                                                                       |
-| :------------------------ | :-------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| **Mobile App**            | **Expo (React Native)**     | Mobile UI, QR code scanning, and telemetry rendering. Supports both local and cloud modes. Uses `@connectrpc/connect-web`. |
-| **Mobile Routing**        | **Expo Router**             | File-based native navigation.                                                                                              |
-| **Universal Bridge**      | **Go (Golang)**             | High-performance background process (Sidecar), local Connect-RPC server, and network orchestration.                        |
-| **IDE Plugins**           | **TypeScript / Kotlin**     | Thin native integration layers for each IDE (VS Code, JetBrains). Handles connection settings toggle.                      |
-| **Communication (Local)** | **Connect-RPC (HTTP/JSON)** | Low-latency, strongly-typed channel using unary calls and Server-Streaming over local Wi-Fi / Localhost.                   |
-| **Communication (Cloud)** | **Secure Cloud Tunnel**     | Paid/Premium relay service over the internet (Option 2; backend in private repo).                                          |
+| Component | Technology | Role |
+| :--- | :--- | :--- |
+| **Mobile App** | **Expo (React Native)** | Mobile UI, QR code scanning, and telemetry rendering. Targets both Android and iOS from a single codebase. Uses `@connectrpc/connect-web`. |
+| **Mobile Routing** | **Expo Router** | File-based native navigation for Android and iOS. |
+| **Mobile UI Framework** | **Tamagui** | Cross-platform design system and component library ensuring a pixel-consistent UI across Android and iOS. |
+| **Universal Bridge** | **Go (Golang)** | High-performance background process (Sidecar), local Connect-RPC server, and network orchestration. |
+| **IDE Plugins** | **TypeScript / Kotlin** | Thin native integration layers for each IDE (VS Code, JetBrains). Handles connection settings toggle. |
+| **Communication (Local)** | **Connect-RPC (HTTP/JSON)**| Low-latency, strongly-typed channel using unary calls and Server-Streaming over local Wi-Fi / Localhost. |
+| **Communication (Cloud)** | **Secure Cloud Tunnel** | Paid/Premium relay service over the internet (Option 2; backend in private repo). |
 
 ---
 
@@ -70,11 +72,9 @@ To avoid duplicating network and messaging logic across multiple programming lan
 ### 4.1. Local-First Connectivity (Connect-RPC)
 
 #### Unified Protocol:
-
 Traditional WebSockets are replaced by **Connect-RPC**. The entire ecosystem (IDE extension, Go Bridge, and Mobile App) shares the same strict contracts defined in Protocol Buffers (`.proto`) files. Connect-RPC automatically generates typed clients and handlers for both Go and TypeScript.
 
 #### Communication Flow:
-
 Connect-RPC runs natively over HTTP (utilizing JSON serialization transparently for web/mobile compatibility), creating a homogeneous API flow:
 
 ```
@@ -87,20 +87,19 @@ Connect-RPC runs natively over HTTP (utilizing JSON serialization transparently 
 1. **IDE Plugin to Go Bridge (Localhost Inter-Process Connection):**
    - **Mechanism:** The TypeScript plugin acts as a Connect client making calls to the Go bridge acting as a Connect-RPC server on a local port (e.g., `localhost:8080`).
    - **Protocol:** Connect protocol over HTTP. Latency is virtually zero since both processes run on the same machine.
+   - **Dynamic Port Allocation:** To avoid port collisions in multi-window workspaces, the Go sidecar dynamically scans and binds to an available free port (starting from `8080`). It then reports the allocated port back to the IDE plugin via stdout or a temporary file.
 2. **Mobile App (Expo) to Go Bridge (LAN Connection):**
    - **Mechanism:** The Expo mobile app uses `@connectrpc/connect-web`. After scanning the QR code, it receives the local IP of the PC (e.g., `http://192.168.1.15:8080`).
    - **Protocol:** The mobile app makes standard HTTP POST requests to the Go sidecar. Connect-RPC serializes/deserializes data to JSON transparently, giving the developer a fully typed client interface (e.g., `await client.getPendingTasks({})`).
+   - **IP Discovery (UDP Dial Test):** The Go sidecar resolves the active network IP by performing a dummy UDP dial to an external address (e.g., `8.8.8.8:80`). This queries the OS routing table to extract the host IP of the active local Wi-Fi interface without transmitting actual packets.
 
 #### Real-time Events via Server-Streaming:
-
 To push asynchronous telemetry and Human-in-the-loop requests from the Go sidecar to the mobile app without raw WebSockets, Connect-RPC uses **Server-Streaming**:
-
 - The mobile app establishes a persistent connection by calling a streaming RPC (e.g., `StreamAgentEvents`).
 - The connection remains open using Server-Sent Events (SSE) or ReadableStreams.
 - When an AI agent requires human intervention, the Go server pushes a structured event down the stream. The mobile client processes it, renders the UI, and responds using a standard unary RPC (e.g., `RespondToIntervention`).
 
 #### Connectivity Modes:
-
 - **Option 1 (Default - Local Wi-Fi):** Direct peer-to-peer Connect-RPC communication over local LAN, requiring no internet.
 - **Option 2 (Premium - Secure Cloud):** Connects the Go sidecar and mobile app over the internet using a secure cloud relay service (powered by a private backend repository). The IDE plugin provides a settings toggle to switch between modes.
 
@@ -115,8 +114,76 @@ To push asynchronous telemetry and Human-in-the-loop requests from the Go sideca
 
 ### 4.3. Mobile App (Expo Go)
 
-- **Expo Go:** Standard Expo Go will be used for mobile development since it is fully sufficient for our requirements (local WebSockets and QR scanning are supported out-of-the-box). This avoids the overhead of custom native builds during development.
+- **Expo Go:** Standard Expo Go will be used for mobile development since it is fully sufficient for our requirements (Connect-RPC over HTTP and QR scanning are supported out-of-the-box). This avoids the overhead of custom native builds during development.
+- **Target platforms:** The mobile app is built and released for **both Android and iOS**. A single shared Expo/React Native codebase produces both native versions. There is no web/browser target for the mobile app.
+- **Cleartext HTTP Permission:** To prevent iOS App Transport Security (ATS) or Android cleartext blockages, the Expo app configuration (`app.json`) will be configured to permit cleartext HTTP communication on local IP ranges for both development and production.
 - **State Management:** `Zustand` will be used to manage the message queue, pending agent requests, and real-time logs reactively and lightweightly.
+
+### 4.3.1. UI Framework — Tamagui
+
+**Decision:** [Tamagui](https://tamagui.dev) is the exclusive UI framework for all screens and components in the mobile app (`apps/mobile-expo/`).
+
+**Rationale:**
+- Tamagui is built specifically for React Native and compiles down to optimized native views, ensuring a pixel-consistent interface across **Android and iOS without any platform-specific component forks**.
+- It ships with a fully typed design system (tokens for colors, spacing, typography, radii) that enforces visual consistency at compile time rather than relying on runtime style overrides.
+- Performance: Tamagui's compiler flattens styled components into static native views, eliminating the JS-side style processing overhead common in styled-components alternatives.
+- It integrates natively with Expo Router and supports dark/light mode theming out-of-the-box.
+
+**Usage rules:**
+1. **No platform-specific UI code.** Do not use `Platform.OS === 'android'` or `Platform.OS === 'ios'` checks inside UI components. If a visual difference must exist, it must be expressed through Tamagui's theme/platform token system.
+2. **All design tokens** (colors, spacing, font sizes, border radii) must be defined in the Tamagui config (`tamagui.config.ts`) and consumed as tokens — never hardcoded values.
+3. **Component library:** Use Tamagui's built-in primitives (`Stack`, `XStack`, `YStack`, `Text`, `Button`, `Sheet`, etc.) as the base for all components. Custom components must be composed from Tamagui primitives.
+4. **Theming:** Define a dark theme and a light theme in `tamagui.config.ts`. The app respects the OS-level appearance preference (`useColorScheme`) by default.
+
+**Installation (Expo Go compatible):**
+Tamagui works with standard Expo Go without requiring custom native builds, as it operates entirely within React Native's JS runtime.
+
+### 4.4. Protobuf & Code-Generation Tooling
+
+- **Tooling:** We use [`buf`](https://buf.build) to manage and compile Protocol Buffers. `protoc` is **not** used directly.
+- **Configuration:** A `buf.yaml` and `buf.gen.yaml` at the repo root configure lint rules, breaking-change detection, and the generation plugins.
+- **Plugins used:**
+  - `protoc-gen-go` + `protoc-gen-connect-go` → generates Go server stubs into `packages/bridge-go/pkg/api/v1/`.
+  - `protoc-gen-es` + `@connectrpc/protoc-gen-connect-es` → generates TypeScript stubs into a shared `packages/proto-ts/` directory, consumed by both the VS Code extension and the Expo app.
+- **Source of truth:** All `.proto` files live under `proto/` at the repo root and are referenced by `buf.yaml`. The `specs/` directory contains only Markdown documentation — no source code.
+- **Build automation:** A `Makefile` at the repo root exposes a `make proto` target that runs `buf generate`. This is the single command any developer or CI pipeline must run after modifying a `.proto` file.
+- **Output placement:**
+  ```
+  packages/
+  ├── bridge-go/pkg/api/v1/   ← generated Go stubs
+  └── proto-ts/               ← generated TypeScript stubs (shared)
+  ```
+- **Rule:** Generated files (`.pb.go`, `*_connect.ts`, etc.) are **committed to Git** so that contributors do not need to install `buf` locally to build the project. They are regenerated only when a `.proto` file changes.
+
+### 4.5. Monorepo Package Management
+
+- **No monorepo manager:** We deliberately avoid Turborepo, pnpm workspaces, or npm workspaces. Subprojects (`apps/mobile-expo`, `packages/bridge-go`, `plugins/vscode-extension`) manage their own dependencies independently.
+- **Rationale:** The three technology stacks (Go, Node.js/TypeScript, and Kotlin/Java) have incompatible package ecosystems. A monorepo tool would add overhead without providing real cross-stack benefit given the project's scale.
+- **Shared TypeScript stubs:** The only shared artifact between TS subprojects is the generated Connect-RPC code in `packages/proto-ts/`. Each consuming project (`apps/mobile-expo`, `plugins/vscode-extension`) will reference it via a relative path import or a workspace `file:` link—this is the only inter-package dependency.
+- **Installation:** Developers run `npm install` inside each directory independently.
+
+### 4.6. Local Network Security (HTTP vs HTTPS)
+
+- **Decision: Plain HTTP with explicit cleartext exceptions.** We do not use self-signed TLS certificates on the local LAN. Generating, distributing, and trusting a dynamic local certificate across mobile OS is complex and fragile for a developer tool.
+- **iOS:** The `app.json` Expo config sets `ios.infoPlist.NSAppTransportSecurity` with `NSAllowsLocalNetworking: true` to exempt local-network HTTP from ATS.
+- **Android:** The `app.json` Expo config sets `android.usesCleartextTraffic: true`.
+- **Security model:** The QR code contains a short-lived **bearer token** (randomly generated UUID) that must accompany every Connect-RPC request in the `Authorization` header. This prevents other devices on the same Wi-Fi from intercepting or replaying requests. Token validity is scoped to a single IDE session.
+- **Future / Option 2:** The cloud relay (Option 2) uses TLS termination at the relay server—end-to-end encryption is provided by the HTTPS tunnel, not by the local sidecar.
+
+### 4.7. Sidecar Lifecycle Management
+
+- **Launch:** The IDE plugin spawns the Go sidecar as a child process on extension activation. The sidecar writes its allocated port to `stdout` (first line), which the plugin reads to configure the Connect-RPC client.
+- **Port Allocation:** The Go sidecar attempts ports starting at `8765`, incrementing until it finds a free one. The resolved port is printed immediately to stdout so the IDE plugin can connect.
+- **Single-instance lock:** To prevent multiple IDE windows from spawning conflicting sidecars, the Go process writes a **lockfile** at `{tmp}/code-compa-{workspaceHash}.lock` containing its PID and port. On startup, it checks for an existing lock; if the locked PID is still alive, it exits and the IDE plugin reuses that port instead.
+- **Crash Recovery:** The IDE plugin monitors the child process. If it exits unexpectedly (non-zero exit code), the plugin waits 1 second and attempts a single automatic restart. If the restart also fails, the plugin surfaces a user-visible error notification with a "Restart Bridge" action button.
+- **Graceful Shutdown:** On IDE deactivation (window close / extension deactivation hook), the plugin sends `SIGTERM` to the child process. The Go sidecar handles `SIGTERM` to close open streams, release the lockfile, and exit cleanly within 3 seconds.
+- **Zombie prevention:** If the IDE is killed forcefully (SIGKILL), the lockfile PID check on next startup detects the stale lock (PID no longer alive) and replaces it.
+
+### 4.8. Option 2 — Cloud Authentication (Deferred)
+
+- The authentication and authorization protocol for the Secure Cloud Remote connection (Option 2) is **intentionally deferred** to the private backend repository that manages the cloud relay infrastructure.
+- **Principle:** The Go sidecar and mobile app will consume an auth token (format TBD by the private repo team). This repo only needs to know how to pass the token in Connect-RPC metadata headers — the token issuance, refresh, and revocation flows live in the private backend.
+- **Placeholder:** A dedicated spec (`specs/spec-XX-cloud-auth/`) will be created once the private backend API is stabilized, formally documenting the handshake contract between the public sidecar and the private relay.
 
 ---
 
@@ -128,7 +195,7 @@ Specs represent the source of truth for the project's features and technical req
 
 - **Core Executable Spec:** Detailing the Go-based background binary sidecar, its lifecycle, and how it starts the local server.
 - **UI & Configuration Spec:** Describing the design and behavior of specific user interfaces, such as the toggle settings for switching between Local Wi-Fi and Secure Cloud Remote connection modes.
-- **Message Contracts:** Defining JSON Schemas or interface protocols for WebSocket, IPC, and gRPC communication.
+- **Message Contracts:** Defining Protocol Buffer schemas (`.proto`) for Connect-RPC services covering IPC (IDE ↔ Go Bridge) and LAN (Go Bridge ↔ Mobile App) communication.
 
 ### SDD Process:
 
@@ -141,21 +208,21 @@ Specs represent the source of truth for the project's features and technical req
 
 ## 6. Standard Service Protocol (Connect-RPC & Protobuf Spec)
 
-All communication between the IDE, Go Bridge, and mobile application is defined via Protocol Buffers.
+All communication between the IDE, Go Bridge, and mobile application is defined via Protocol Buffers. 
 
-### Protobuf Definition: `antigravity/v1/companion.proto`
+### Protobuf Definition: `proto/codecompa/v1/companion.proto`
 
 ```protobuf
 syntax = "proto3";
 
-package antigravity.v1;
+package codecompa.v1;
 
 option go_package = "github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1;apiv1";
 
 service CompanionService {
   // The mobile app calls this stream to receive real-time events from the AI agent
   rpc StreamAgentEvents(StreamAgentEventsRequest) returns (stream AgentEvent);
-
+  
   // The mobile app responds to a pending human intervention request
   rpc RespondToIntervention(RespondToInterventionRequest) returns (RespondToInterventionResponse);
 }
@@ -217,17 +284,19 @@ To mitigate risks, the project will be built incrementally, focusing first on pr
 ### 📋 Phase 1: Bridge Validation (VS Code + Go)
 
 - [ ] Set up the monorepo with the initial structure.
+- [ ] Write the first spec (`specs/spec-01-go-bridge/`) covering the sidecar lifecycle, port allocation, and IPC contract.
 - [ ] Develop a basic VS Code extension in TypeScript that runs the Go background process safely.
-- [ ] Write Go code to detect the local Wi-Fi IP and start the WebSocket server.
+- [ ] Write Go code to detect the local Wi-Fi IP and start the Connect-RPC HTTP server.
 - [ ] Implement the logic to inject `chmod +x` permissions from Node.js on Mac/Linux.
-- [ ] Establish initial JSON Schemas for WebSocket payloads.
+- [ ] Define `.proto` files under `proto/codecompa/v1/` and generate Go + TypeScript stubs with `make proto`.
 
 ### 📱 Phase 2: Mobile Companion (Expo)
 
+- [ ] Write the spec (`specs/spec-02-mobile-companion/`) covering QR handshake, streaming connection, and HITL UI flow.
 - [ ] Initialize the mobile app using Expo Router.
 - [ ] Integrate `expo-camera` to read the QR code generated by the IDE.
-- [ ] Validate real-time, bi-directional local WebSocket connection (PC $\leftrightarrow$ Phone).
-- [ ] Build runtime schema validation for incoming WebSocket events.
+- [ ] Validate real-time Server-Streaming Connect-RPC connection (PC ↔ Phone).
+- [ ] Build type-safe Connect-RPC client from generated TypeScript stubs.
 
 ### 🚀 Phase 3: Ecosystem and Integration
 
@@ -242,29 +311,44 @@ To mitigate risks, the project will be built incrementally, focusing first on pr
 ```text
 code-compa/
 ├── .gitignore
+├── Makefile                    <-- `make proto` runs buf generate
+├── buf.yaml                    <-- buf workspace & lint config
+├── buf.gen.yaml                <-- buf code-generation plugins config
 ├── README.md
 ├── ARCHITECTURE.md             <-- System architecture & SDD guidelines
 │
-├── specs/                      <-- Specifications (Spec-driven Development)
-│   ├── spec-01-go-bridge/      <-- Spec for sidecar background process
-│   └── spec-02-ui-toggle/      <-- Spec for network settings UI toggle
+├── specs/                      <-- Specifications docs only (no source code)
+│   ├── spec-01-go-bridge/      <-- Spec: sidecar lifecycle & IPC contract
+│   │   └── README.md           <-- Design doc, behavior, success criteria
+│   └── spec-02-mobile-companion/ <-- Spec: QR handshake & HITL UI flow
+│       └── README.md
+│
+├── proto/                      <-- Protocol Buffer source files
+│   └── codecompa/
+│       └── v1/
+│           └── companion.proto <-- Canonical Connect-RPC service definition
 │
 ├── apps/                       <-- User-facing applications
 │   └── mobile-expo/            <-- Expo Project (React Native)
 │       ├── app/                <-- Screen directory (Expo Router)
 │       ├── components/         <-- Shared mobile UI components
 │       ├── package.json
-│       └── app.json            <-- Expo config
+│       └── app.json            <-- Expo config (cleartext HTTP exceptions)
 │
 ├── packages/                   <-- Shared modules, libraries, and backend
-│   └── bridge-go/              <-- Universal Go core (Sidecar)
-│       ├── cmd/
-│       │   └── bridge/         <-- Binary entry point (`main.go`)
-│       ├── internal/           <-- Private server code (WebSockets, LAN)
-│       │   ├── server/         <-- HTTP/WebSocket server logic
-│       │   └── discovery/      <-- PC local IP discovery logic
-│       ├── go.mod
-│       └── go.sum
+│   ├── bridge-go/              <-- Universal Go core (Sidecar)
+│   │   ├── cmd/
+│   │   │   └── bridge/         <-- Binary entry point (`main.go`)
+│   │   ├── internal/           <-- Private server code (Connect-RPC, LAN)
+│   │   │   ├── server/         <-- Connect-RPC HTTP server logic
+│   │   │   └── discovery/      <-- PC local IP discovery logic
+│   │   ├── pkg/api/v1/         <-- Generated Go stubs (committed)
+│   │   ├── go.mod
+│   │   └── go.sum
+│   │
+│   └── proto-ts/               <-- Generated TypeScript stubs (committed)
+│       ├── package.json
+│       └── src/                <-- Output of protoc-gen-es + connect-es
 │
 └── plugins/                    <-- IDE extensions
     ├── vscode-extension/       <-- Extension for VS Code / Cursor

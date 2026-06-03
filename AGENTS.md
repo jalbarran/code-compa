@@ -6,17 +6,17 @@ Welcome! If you are an AI agent developer or coding assistant working on **Code 
 
 ## 1. Core Rule: Spec-driven Development (SDD)
 
-Before writing *any* implementation code, you must ensure a specification document exists or create one under the `specs/` directory. 
+Before writing *any* implementation code, you must ensure a specification document exists or create one under the `specs/` directory.
 
 - **Do NOT write code first.** Every new feature, UI component, sidecar task, or protocol exchange must have a corresponding spec.
 - **Spec Directory Naming Convention:** Specs must be organized under the `specs/` directory, following a strict numerical prefix order and a short descriptive name.
   - Examples:
     - `specs/spec-01-go-bridge/`
     - `specs/spec-02-ui-toggle/`
-- **Spec Format:** Within its directory, the spec should contain Markdown documentation (`README.md` or similar) or JSON Schema files. They must describe:
+- **Spec Format:** Within its directory, the spec should contain Markdown documentation (`README.md` or similar). Specs describe:
   - The feature's target behavior and user flow.
-  - The API, WebSocket payloads, or IPC messaging contracts.
-  - Verification guidelines.
+  - References to the Connect-RPC service definitions (`.proto` files live in `proto/`, not inside `specs/`).
+  - Verification guidelines and success criteria.
 
 ---
 
@@ -24,21 +24,71 @@ Before writing *any* implementation code, you must ensure a specification docume
 
 ### 2.1. Shared Core & Sidecar Strategy
 - The IDE plugins must remain as thin as possible (TypeScript / Kotlin). Do not implement heavy networking, discovery, or complex state logic inside the IDE plugin.
-- All core logic (local WebSocket server, discovery, cloud relay connectivity, and network management) must live in the Go sidecar (`packages/bridge-go`).
-- IDE extensions communicate with the Go sidecar via local IPC (Stdin/Stdout or gRPC).
+- All core logic (local Connect-RPC server, network discovery, cloud relay connectivity, and network management) must live in the Go sidecar (`packages/bridge-go`).
+- IDE extensions communicate with the Go sidecar via local IPC: the plugin spawns the sidecar as a child process and reads the allocated port from its `stdout`. From that point, all communication uses Connect-RPC over `localhost`.
 
 ### 2.2. Mobile App (Expo Go)
 - We use standard **Expo Go** for mobile development.
 - **No custom native builds:** Do not introduce native library dependencies that require custom native builds (like Expo Development Builds or ejecting) unless explicitly approved.
-- Use `Zustand` for React Native state management.
+- **Target platforms:** The mobile app must run on **both Android and iOS**. Every screen and component must look and behave identically on both platforms.
+- **UI Framework:** Use **Tamagui** exclusively for all UI components and styling. Rules:
+  - Do NOT use `Platform.OS === 'android'` or `Platform.OS === 'ios'` checks inside UI components.
+  - All design tokens (colors, spacing, typography, radii) must be defined in `tamagui.config.ts` and consumed as tokens — never hardcoded values.
+  - Use Tamagui primitives (`Stack`, `XStack`, `YStack`, `Text`, `Button`, `Sheet`, etc.) as the base for all components.
+- **State Management:** Use `Zustand` for React Native state management.
 
 ### 2.3. Git & Binary Exclusions
 - **NEVER commit compiled binaries** (such as Go executables or built `.vsix` packages) to Git.
 - Verify that compiled targets are ignored in `.gitignore`.
 - Place any temporary scripts or local test tools under a `scratch/` directory (if temporary) and do not commit them.
 
+---
+
 ## 3. Communication Protocol
 
-- All network and IPC communication must follow the Connect-RPC service definitions defined in `.proto` files inside the specifications directory (e.g. under `specs/`).
-- Never write hand-crafted WebSockets or custom JSON parsers. Always use the generated Connect clients and handlers for both Go and TypeScript.
-- Any modification to APIs or event payloads must start by updating the corresponding Protocol Buffers file first, then regenerating the Go and TypeScript stubs to avoid contract drift.
+- All network and IPC communication must follow the Connect-RPC service definitions in `.proto` files located in the `proto/` directory at the repo root (e.g. `proto/codecompa/v1/companion.proto`).
+- **Never write hand-crafted HTTP handlers, raw WebSockets, or custom JSON parsers.** Always use the generated Connect-RPC clients and handlers for both Go and TypeScript.
+- Any modification to APIs or event payloads must start by updating the corresponding `.proto` file first, then regenerating the stubs (see §4), to avoid contract drift between client and server.
+
+---
+
+## 4. Code Generation Workflow
+
+All typed clients and server stubs are generated from `.proto` files using `buf`. This is the single source of truth for the IPC and network API contracts.
+
+### 4.1. Tool: `buf`
+- We use [`buf`](https://buf.build) — **do not use `protoc` directly**.
+- Configuration lives at the repo root:
+  - `buf.yaml` — workspace definition, lint rules, and breaking-change detection.
+  - `buf.gen.yaml` — code-generation plugin configuration.
+
+### 4.2. Generation Plugins
+| Plugin | Output | Destination |
+| :--- | :--- | :--- |
+| `protoc-gen-go` | Go message types | `packages/bridge-go/pkg/api/v1/` |
+| `protoc-gen-connect-go` | Go server/client stubs | `packages/bridge-go/pkg/api/v1/` |
+| `protoc-gen-es` | TypeScript message types | `packages/proto-ts/src/` |
+| `@connectrpc/protoc-gen-connect-es` | TypeScript client stubs | `packages/proto-ts/src/` |
+
+### 4.3. How to Regenerate Stubs
+
+Run the following command from the **repo root** after modifying any `.proto` file:
+
+```bash
+make proto
+```
+
+This is equivalent to running `buf generate` and must be executed before any implementation changes that depend on the updated contract.
+
+### 4.4. Rules for Generated Files
+- **Do NOT manually edit** any file inside `packages/bridge-go/pkg/api/v1/` or `packages/proto-ts/src/`. These are machine-generated — manual edits will be overwritten on the next `make proto` run.
+- Generated stubs **are committed to Git** so contributors do not need `buf` installed to build the project.
+- If you add a new RPC or message, always update the `.proto` file first, run `make proto`, and commit both the `.proto` change and the regenerated stubs together in the same commit.
+- Never add business logic inside generated files. Place all custom logic in separate files that import the generated types.
+
+### 4.5. Source of Truth Location
+`.proto` files live under `proto/codecompa/v1/` at the repo root. The `specs/` directory contains **only Markdown documentation** — no source code. The canonical file at project start is:
+
+```
+proto/codecompa/v1/companion.proto
+```

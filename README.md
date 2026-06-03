@@ -4,7 +4,7 @@
 
 This project does not replace or duplicate the logic of AI agents (such as Gemini or Claude) integrated into **Antigravity IDE** or **VS Code**. Its exclusive purpose is to serve as a bridge so you can step away from your desk, monitor coding progress from your phone, and respond to critical context requests (**Human-in-the-loop**) without disrupting the AI's autonomous workflow.
 
-The companion mobile app and IDE plugin support two communication modes:
+The mobile app is released for **both Android and iOS** and shares a single UI codebase, ensuring a pixel-consistent experience across both platforms. The companion app and IDE plugin support two communication modes:
 
 - **Option 1: Direct Local Wi-Fi Connection (Default - Free/Offline):** A local peer-to-peer connection over Wi-Fi requiring zero internet connection.
 - **Option 2: Secure Cloud Remote Connection (Premium/Paid):** A secure internet connection via a cloud relay service for when you are away from the local network. The cloud infrastructure is powered by a separate, proprietary backend repository.
@@ -15,7 +15,8 @@ The companion mobile app and IDE plugin support two communication modes:
 
 The project is structured as a monorepo that combines high-performance networking with a fast, modern mobile development experience:
 
-- **Mobile App:** [Expo (React Native)](https://expo.dev/) with **Expo Router** for native file-based routing. Supports both connection modes.
+- **Mobile App:** [Expo (React Native)](https://expo.dev/) with **Expo Router** for native file-based routing. Targets **both Android and iOS** from a single shared codebase.
+- **Mobile UI:** [Tamagui](https://tamagui.dev/) as the UI framework and design system, ensuring a pixel-consistent interface across Android and iOS without platform-specific component forks.
 - **Universal Bridge (Sidecar):** [Go (Golang)](https://go.dev/) to manage concurrency, lightweight network sockets, and the local server lifecycle.
 - **IDE Plugin:** TypeScript using the **VS Code API** (natively compatible with Antigravity IDE, VS Code, and Cursor). Contains settings toggles to switch connection modes.
 - **Communication:** **Connect-RPC** (via unary and Server-Streaming HTTP) over the Local Area Network (LAN) for local mode, and cloud connections for remote mode.
@@ -66,7 +67,7 @@ code-compa/
 ├── apps/
 │   └── mobile-expo/            # Mobile application using Expo (React Native)
 ├── packages/
-│   └── bridge-go/              # Go-based WebSocket server and network orchestrator
+│   └── bridge-go/              # Go-based Connect-RPC server and network orchestrator
 └── plugins/
     └── vscode-extension/       # Unified extension for Antigravity / VS Code
         └── bin/                # Compiled Go binaries per architecture
@@ -114,8 +115,8 @@ _Press `a` to open the Android emulator, `i` for iOS, or scan the QR code using 
 ## 🗺️ Execution Roadmap
 
 - [ ] **Phase 1: Spec & Sidecar Lifecycle:** Define core payload JSON Schemas under `specs/` and establish the Sidecar lifecycle (IDE extension running the background Go binary).
-- [ ] **Phase 2: Network Handshake:** WebSocket server in Go with auto local-IP detection and QR code handshake.
-- [ ] **Phase 3: Mobile Companion:** Basic UI built with Expo Router displaying connection status and responding to control tasks.
+- [ ] **Phase 2: Network Handshake:** Connect-RPC HTTP server in Go with auto local-IP detection and QR code handshake.
+- [ ] **Phase 3: Mobile Companion:** Basic UI built with Expo Router displaying connection status and responding to control tasks via type-safe Connect-RPC calls.
 - [ ] **Phase 4: Agent Integration:** Connecting real event hooks from Antigravity IDE to the Go backend.
 
 ---
