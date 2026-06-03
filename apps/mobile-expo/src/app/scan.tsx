@@ -89,7 +89,7 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
 
             <YStack>
               <Text fos="$3" fow="bold" mb="$1">{t('scan.token')}</Text>
-              <Input value={token} onChangeText={setToken} placeholder="Bearer token" />
+              <Input value={token} onChangeText={setToken} placeholder={t('scan.bearerTokenPlaceholder')} />
             </YStack>
 
             {errorMsg && (

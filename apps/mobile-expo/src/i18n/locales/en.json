@@ -10,6 +10,7 @@
     "ipAddress": "IP Address",
     "port": "Port",
     "token": "Token",
+    "bearerTokenPlaceholder": "Bearer token",
     "useScanner": "Use Scanner",
     "connect": "Connect",
     "scanQrCode": "Scan QR Code",
@@ -37,5 +38,29 @@
     "sessionHistory": "Session History",
     "resolved": "Resolved",
     "resolvedUppercase": "RESOLVED"
+  },
+  "tabs": {
+    "home": "Home",
+    "explore": "Explore",
+    "docs": "Docs"
+  },
+  "explore": {
+    "title": "Explore",
+    "description": "This starter app includes example code to help you get started.",
+    "docs": "Expo documentation",
+    "fileRouting": "File-based routing",
+    "fileRoutingDesc1": "This app has two screens:",
+    "fileRoutingDesc2": "and",
+    "fileRoutingDesc3": "The layout file in",
+    "fileRoutingDesc4": "sets up the tab navigator.",
+    "learnMore": "Learn more",
+    "platforms": "Android, iOS, and web support",
+    "platformsDesc": "You can open this project on Android, iOS, and the web. To open the web version, press w in the terminal running this project.",
+    "images": "Images",
+    "imagesDesc": "For static images, you can use the @2x and @3x suffixes to provide files for different screen densities.",
+    "themes": "Light and dark mode components",
+    "themesDesc": "This template has light and dark mode support. The useColorScheme() hook lets you inspect what the user's current color scheme is, and so you can adjust UI colors accordingly.",
+    "animations": "Animations",
+    "animationsDesc": "This template includes an example of an animated component. The src/components/ui/collapsible.tsx component uses the powerful react-native-reanimated library to animate opening this hint."
   }
 }

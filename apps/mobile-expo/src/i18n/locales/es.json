@@ -10,6 +10,7 @@
     "ipAddress": "Dirección IP",
     "port": "Puerto",
     "token": "Token",
+    "bearerTokenPlaceholder": "Token de portador",
     "useScanner": "Usar Escáner",
     "connect": "Conectar",
     "scanQrCode": "Escanear Código QR",
@@ -37,5 +38,29 @@
     "sessionHistory": "Historial de Sesión",
     "resolved": "Resuelto",
     "resolvedUppercase": "RESUELTO"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "explore": "Explorar",
+    "docs": "Docs"
+  },
+  "explore": {
+    "title": "Explorar",
+    "description": "Esta aplicación de inicio incluye código de ejemplo para ayudarle a comenzar.",
+    "docs": "Documentación de Expo",
+    "fileRouting": "Enrutamiento basado en archivos",
+    "fileRoutingDesc1": "Esta aplicación tiene dos pantallas:",
+    "fileRoutingDesc2": "y",
+    "fileRoutingDesc3": "El archivo de diseño en",
+    "fileRoutingDesc4": "configura el navegador de pestañas.",
+    "learnMore": "Aprender más",
+    "platforms": "Soporte de Android, iOS y web",
+    "platformsDesc": "Puede abrir este proyecto en Android, iOS y la web. Para abrir la versión web, presione w en la terminal que ejecuta este proyecto.",
+    "images": "Imágenes",
+    "imagesDesc": "Para imágenes estáticas, puede usar los sufijos @2x y @3x para proporcionar archivos para diferentes densidades de pantalla.",
+    "themes": "Componentes de modo claro y oscuro",
+    "themesDesc": "Esta plantilla tiene soporte para modo claro y oscuro. El gancho useColorScheme() le permite inspeccionar cuál es el esquema de color actual del usuario, para que pueda ajustar los colores de la interfaz de usuario en consecuencia.",
+    "animations": "Animaciones",
+    "animationsDesc": "Esta plantilla incluye un ejemplo de un componente animado. El componente src/components/ui/collapsible.tsx utiliza la potente biblioteca react-native-reanimated para animar la apertura de esta pista."
   }
 }

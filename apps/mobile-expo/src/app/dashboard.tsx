@@ -46,7 +46,7 @@ export default function DashboardScreen() {
       {/* Header section */}
       <XStack jc="space-between" ai="center" mb="$4">
         <YStack>
-          <Text fos="$6" fow="bold" col="$color">Code Compa</Text>
+          <Text fos="$6" fow="bold" col="$color">{"Code Compa"}</Text>
           <XStack ai="center" gap="$2">
             <Circle size={10} bg={getStatusColor()} />
             <Text col="$colorMuted" fos="$2">
