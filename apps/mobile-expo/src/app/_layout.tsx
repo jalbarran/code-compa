@@ -3,6 +3,8 @@ import { TamaguiProvider, Theme } from 'tamagui';
 import { useColorScheme } from 'react-native';
 import config from '../../tamagui.config';
 import '../i18n';
+import 'web-streams-polyfill';
+import 'fast-text-encoding';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

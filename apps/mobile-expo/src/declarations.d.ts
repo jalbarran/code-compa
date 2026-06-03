@@ -4,3 +4,6 @@ declare module '*.module.css' {
 }
 
 declare module '*.css';
+
+declare module 'web-streams-polyfill';
+declare module 'fast-text-encoding';

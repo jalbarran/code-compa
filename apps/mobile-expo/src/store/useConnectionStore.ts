@@ -14,7 +14,7 @@ interface ConnectionState {
   errorMessage: string | null;
   queue: AgentEvent[];
   history: AgentEvent[];
-  
+
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
   respond: (eventId: string, optionId: string, feedbackText?: string) => Promise<boolean>;

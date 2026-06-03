@@ -46,6 +46,16 @@ To maintain lightweight development and clean visual design across multiple plat
   - **iOS:** Set `NSAppTransportSecurity` with `NSAllowsLocalNetworking: true` to exempt LAN IPs.
   - **Android:** Set `android.usesCleartextTraffic: true` in the Expo app config.
 
+### 2.5. Connect-RPC Server-Streaming Polyfill (Expo Go Compatibility)
+- **Constraint:** React Native's default JavaScript engine (`hermes`) does not natively include standard `TextEncoder`/`TextDecoder` and `ReadableStream` APIs.
+- **Decision (Alternative B - Native Fetch with Polyfills):** In newer Expo SDK versions (SDK 56+ / React Native 0.85+), the native `fetch` implementation handles response streaming natively. To enable Connect-RPC stream decoding in this environment, we only need to polyfill text encoding and web streams:
+  - Integrate the `web-streams-polyfill` and `fast-text-encoding` packages.
+  - Initialize the polyfill libraries at the top of the entry point layout file (`apps/mobile-expo/src/app/_layout.tsx`) before executing any Connect-RPC client transactions:
+    ```typescript
+    import 'web-streams-polyfill';
+    import 'fast-text-encoding';
+    ```
+
 ---
 
 ## 3. Pairing & Connection Handshake (QR Flow)

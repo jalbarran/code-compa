@@ -13,9 +13,9 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
   const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const [manualMode, setManualMode] = useState(false);
-  const [ip, setIp] = useState('192.168.1.');
+  const [ip, setIp] = useState('192.168.0.');
   const [port, setPort] = useState('8765');
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState(__DEV__ ? 'XXX' : '');
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
