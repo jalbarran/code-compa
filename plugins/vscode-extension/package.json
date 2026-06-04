@@ -20,7 +20,25 @@
         "command": "code-compa.triggerMockIntervention",
         "title": "Code Compa: Trigger Mock Intervention"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "code-compa-sidebar",
+          "title": "Code Compa",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "code-compa-sidebar": [
+        {
+          "type": "webview",
+          "id": "code-compa.sidebarView",
+          "name": "Pair Mobile Companion"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -30,14 +48,16 @@
     "lint": "eslint src --ext ts"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^1.8.0",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-node": "^1.4.0",
-    "@bufbuild/protobuf": "^1.8.0",
-    "code-compa-proto-ts": "file:../../packages/proto-ts"
+    "code-compa-proto-ts": "file:../../packages/proto-ts",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "@types/vscode": "^1.80.0",
     "@types/node": "^18.x",
+    "@types/qrcode": "^1.5.6",
+    "@types/vscode": "^1.80.0",
     "typescript": "^5.1.3"
   }
 }

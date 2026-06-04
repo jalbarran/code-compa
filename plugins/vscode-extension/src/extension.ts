@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import * as crypto from 'crypto';
+import * as os from 'os';
+import * as QRCode from 'qrcode';
 
 import { createPromiseClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-node';
@@ -13,9 +15,15 @@ let sidecarPort: number | null = null;
 let sidecarToken: string | null = null;
 let restartAttempts = 0;
 const maxRestartAttempts = 1;
+let sidebarProvider: SidebarProvider;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Code Compa VS Code extension is active.');
+
+  sidebarProvider = new SidebarProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider('code-compa.sidebarView', sidebarProvider)
+  );
 
   const startBridgeCommand = vscode.commands.registerCommand('code-compa.startBridge', () => {
     restartAttempts = 0;
@@ -135,7 +143,7 @@ function getWorkspaceHash(): string {
   const workspacePath = workspaceFolders && workspaceFolders.length > 0
     ? workspaceFolders[0].uri.fsPath
     : 'no-active-workspace';
-  
+
   return crypto.createHash('sha256').update(workspacePath).digest('hex');
 }
 
@@ -247,13 +255,14 @@ function startSidecar(context: vscode.ExtensionContext) {
         const config = JSON.parse(firstLine);
         if (config.port && config.status) {
           sidecarPort = config.port;
-          
+
           if (config.status === 'READY') {
             sidecarToken = config.token || sidecarToken;
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge started successfully on port {0}", sidecarPort!)
             );
             restartAttempts = 0; // reset on success
+            sidebarProvider.updateContent();
           } else if (config.status === 'ALREADY_RUNNING') {
             // Read port & token from lockfile
             const lockData = readLockfile();
@@ -264,6 +273,7 @@ function startSidecar(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
             );
+            sidebarProvider.updateContent();
           }
         }
       } catch (err) {
@@ -313,4 +323,139 @@ function stopSidecar() {
   }
   sidecarPort = null;
   sidecarToken = null;
+  if (sidebarProvider) {
+    sidebarProvider.updateContent();
+  }
+}
+
+function getLocalIPAddress(): string {
+  const interfaces = os.networkInterfaces();
+  for (const interfaceName in interfaces) {
+    const addresses = interfaces[interfaceName];
+    if (addresses) {
+      for (const address of addresses) {
+        if (address.family === 'IPv4' && !address.internal) {
+          return address.address;
+        }
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+class SidebarProvider implements vscode.WebviewViewProvider {
+  private _view?: vscode.WebviewView;
+
+  constructor(private readonly _extensionUri: vscode.Uri) { }
+
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ) {
+    this._view = webviewView;
+
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this._extensionUri],
+    };
+
+    this.updateContent();
+  }
+
+  public async updateContent() {
+    if (!this._view) {
+      return;
+    }
+
+    const webview = this._view.webview;
+    if (!sidecarPort || !sidecarToken) {
+      webview.html = this.getHtmlForWaiting();
+      return;
+    }
+
+    try {
+      const ip = getLocalIPAddress();
+      const payload = { ip, port: sidecarPort, token: sidecarToken };
+      const qrDataUrl = await QRCode.toDataURL(JSON.stringify(payload));
+      webview.html = this.getHtmlForCredentials(ip, sidecarPort, sidecarToken, qrDataUrl);
+    } catch (err: any) {
+      webview.html = this.getHtmlForError(err.message || err);
+    }
+  }
+
+  private getHtmlForWaiting(): string {
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <style>
+        body { font-family: sans-serif; padding: 20px; color: var(--vscode-foreground); }
+        .spinner { margin: 20px auto; border: 4px solid rgba(0,0,0,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #2563EB; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .text { text-align: center; font-size: 14px; color: var(--vscode-descriptionForeground); }
+      </style>
+    </head>
+    <body>
+      <div class="spinner"></div>
+      <div class="text">Waiting for Code Compa Bridge to start...</div>
+    </body>
+    </html>`;
+  }
+
+  private getHtmlForCredentials(ip: string, port: number, token: string, qrDataUrl: string): string {
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <style>
+        body { font-family: sans-serif; padding: 16px; color: var(--vscode-foreground); display: flex; flex-direction: column; align-items: center; }
+        h3 { margin-bottom: 8px; font-weight: 600; text-align: center; }
+        .description { font-size: 12px; color: var(--vscode-descriptionForeground); text-align: center; margin-bottom: 20px; line-height: 1.4; }
+        .qr-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; display: flex; justify-content: center; align-items: center; }
+        .qr-img { width: 180px; height: 180px; }
+        .info-card { width: 100%; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); padding: 12px; box-sizing: border-box; }
+        .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+        .info-row:last-child { margin-bottom: 0; }
+        .label { font-weight: bold; color: var(--vscode-descriptionForeground); }
+        .value { font-family: monospace; color: var(--vscode-textPreformat-foreground); }
+      </style>
+    </head>
+    <body>
+      <h3>Pair Companion App</h3>
+      <div class="description">Scan this QR code with the Code Compa mobile app to establish a secure connection.</div>
+      <div class="qr-container">
+        <img class="qr-img" src="${qrDataUrl}" alt="QR Code" />
+      </div>
+      <div class="info-card">
+        <div class="info-row">
+          <span class="label">IP Address:</span>
+          <span class="value">${ip}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Port:</span>
+          <span class="value">${port}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Token:</span>
+          <span class="value">${token === 'XXX' ? 'XXX' : token.substring(0, 8) + '...'}</span>
+        </div>
+      </div>
+    </body>
+    </html>`;
+  }
+
+  private getHtmlForError(error: string): string {
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <style>
+        body { font-family: sans-serif; padding: 20px; color: var(--vscode-errorForeground); }
+        .title { font-weight: bold; margin-bottom: 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="title">Error Generating QR Code</div>
+      <div>${error}</div>
+    </body>
+    </html>`;
+  }
 }
