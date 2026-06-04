@@ -20,6 +20,7 @@ import (
 
 	"github.com/jalbarran/code-compa/packages/bridge-go/internal/discovery"
 	"github.com/jalbarran/code-compa/packages/bridge-go/internal/lockfile"
+	"github.com/jalbarran/code-compa/packages/bridge-go/internal/mcp"
 	"github.com/jalbarran/code-compa/packages/bridge-go/internal/server"
 	"github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1/apiv1connect"
 )
@@ -32,7 +33,20 @@ type OutputConfig struct {
 
 func main() {
 	workspacePath := flag.String("workspace-path", "", "Path to the active workspace")
+	mcpMode := flag.Bool("mcp", false, "Start in MCP (Model Context Protocol) server mode")
 	flag.Parse()
+
+	if *mcpMode {
+		if *workspacePath == "" {
+			wd, err := os.Getwd()
+			if err != nil {
+				log.Fatal("Error: -workspace-path is required when current working directory cannot be read")
+			}
+			*workspacePath = wd
+		}
+		mcp.StartMcpServer(*workspacePath)
+		os.Exit(0)
+	}
 
 	if *workspacePath == "" {
 		log.Fatal("Error: -workspace-path is required")

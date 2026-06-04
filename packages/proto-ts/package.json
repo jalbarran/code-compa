@@ -5,6 +5,7 @@
   "types": "./src/proto/codecompa/v1/companion_pb.ts",
   "dependencies": {
     "@bufbuild/protobuf": "^1.8.0",
-    "@connectrpc/connect": "^1.4.0"
+    "@connectrpc/connect": "^1.4.0",
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

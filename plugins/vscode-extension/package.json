@@ -58,7 +58,7 @@
   "dependencies": {
     "@bufbuild/protobuf": "^1.8.0",
     "@connectrpc/connect": "^1.4.0",
-    "@connectrpc/connect-node": "^1.4.0",
+    "@connectrpc/connect-node": "^1.7.0",
     "code-compa-proto-ts": "file:../../packages/proto-ts",
     "qrcode": "^1.5.4"
   },

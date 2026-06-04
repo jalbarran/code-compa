@@ -445,6 +445,8 @@ function startSidecar(context: vscode.ExtensionContext) {
             );
             restartAttempts = 0; // reset on success
             sidebarProvider.updateContent();
+            // Automatically register MCP server configs
+            registerMcpServerAutomatically(workspacePath, binPath);
           } else if (config.status === 'ALREADY_RUNNING') {
             // Read port & token from lockfile
             const lockData = readLockfile();
@@ -456,6 +458,8 @@ function startSidecar(context: vscode.ExtensionContext) {
               vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
             );
             sidebarProvider.updateContent();
+            // Automatically register MCP server configs
+            registerMcpServerAutomatically(workspacePath, binPath);
           }
         }
       } catch (err) {
@@ -853,4 +857,72 @@ function activateCommandInterception(context: vscode.ExtensionContext) {
     console.log(`[Command Interceptor] executeCommand: ${command}`, JSON.stringify(args));
     return originalExecute.call(vscode.commands, command, ...args);
   };
+}
+
+function registerMcpServerAutomatically(workspacePath: string, binaryPath: string) {
+  const homeDir = os.homedir();
+  const mcpConfig: any = {
+    command: binaryPath,
+    args: ['-workspace-path', workspacePath, '--mcp']
+  };
+
+  console.log(`[MCP Auto-Register] Triggering registration for workspace: ${workspacePath}`);
+
+  // 1. Configure in Antigravity IDE (Gemini)
+  const antigravityConfigPath = path.join(homeDir, '.gemini', 'config', 'mcp_config.json');
+  updateMcpConfigFile(antigravityConfigPath, mcpConfig);
+
+  // 2. Configure in Claude Desktop
+  const isWin = process.platform === 'win32';
+  let claudeConfigPath = '';
+  if (isWin) {
+    if (process.env.APPDATA) {
+      claudeConfigPath = path.join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json');
+    }
+  } else if (process.platform === 'darwin') {
+    claudeConfigPath = path.join(homeDir, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    claudeConfigPath = path.join(homeDir, '.config', 'Claude', 'claude_desktop_config.json');
+  }
+  if (claudeConfigPath) {
+    updateMcpConfigFile(claudeConfigPath, mcpConfig);
+  }
+
+  // 3. Configure in Cline
+  const clineConfigPath = path.join(homeDir, '.code', 'User', 'globalStorage', 'saoudrizwan.claude-dev', 'settings', 'cline_mcp_settings.json');
+  updateMcpConfigFile(clineConfigPath, mcpConfig);
+
+  // 4. Configure in Roo Code
+  const rooConfigPath = path.join(homeDir, '.code', 'User', 'globalStorage', 'rooloops.roo-cline', 'settings', 'cline_mcp_settings.json');
+  updateMcpConfigFile(rooConfigPath, mcpConfig);
+}
+
+function updateMcpConfigFile(configPath: string, newMcpConfig: any) {
+  try {
+    const dir = path.dirname(configPath);
+    if (!fs.existsSync(dir)) {
+      // If client configuration folder does not exist, skip it
+      return;
+    }
+
+    let config: any = {};
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, 'utf8').trim();
+      if (content) {
+        config = JSON.parse(content);
+      }
+    }
+
+    if (!config.mcpServers) {
+      config.mcpServers = {};
+    }
+
+    // Set the mcp server definition
+    config.mcpServers['code-compa'] = newMcpConfig;
+
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+    console.log(`[MCP Auto-Register] Successfully registered inside: ${configPath}`);
+  } catch (err) {
+    console.error(`[MCP Auto-Register] Failed to update config at ${configPath}:`, err);
+  }
 }
