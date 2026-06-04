@@ -38,8 +38,11 @@ func main() {
 		log.Fatal("Error: -workspace-path is required")
 	}
 
-	// 1. Generate token
-	token := uuid.New().String()
+	// 1. Generate token (use 'XXX' in development mode for easy manual testing)
+	token := "XXX"
+	if os.Getenv("CODE_COMPA_ENV") != "development" {
+		token = uuid.New().String()
+	}
 
 	// 2. Scan ports starting from 8765
 	var listener net.Listener

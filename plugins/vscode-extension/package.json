@@ -14,7 +14,14 @@
   ],
   "main": "./out/extension.js",
   "l10n": "./l10n",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "code-compa.triggerMockIntervention",
+        "title": "Code Compa: Trigger Mock Intervention"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",

@@ -23,6 +23,30 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(startBridgeCommand);
 
+  // Test command to trigger mock intervention from the command palette
+  const triggerMockCommand = vscode.commands.registerCommand('code-compa.triggerMockIntervention', async () => {
+    vscode.window.showInformationMessage('Triggering mock intervention...');
+    try {
+      const result = await vscode.commands.executeCommand('code-compa.requestIntervention', {
+        type: 'COMMAND_EXECUTION_REQUEST',
+        metadata: { ide: 'Antigravity IDE', agentName: 'Claude-3.5-Sonnet' },
+        payload: {
+          title: 'Install NPM Packages',
+          description: 'The agent requests permission to run npm install on the root.',
+          command: 'npm install --force',
+          directory: vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '/tmp/dummy-path',
+          riskLevel: 'MEDIUM',
+          diff: 'diff --git a/package.json b/package.json\n--- a/package.json\n+++ b/package.json\n@@ -12,4 +12,5 @@\n   "dependencies": {\n-    "express": "^4.18.2"\n+    "express": "^4.18.2",\n+    "@connectrpc/connect": "^1.4.0"\n   }',
+          prompt: 'Integrate connect library dependency'
+        }
+      });
+      vscode.window.showInformationMessage(`Intervention Resolved: ${JSON.stringify(result)}`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Intervention Failed: ${err.message || err}`);
+    }
+  });
+  context.subscriptions.push(triggerMockCommand);
+
   // Register command for AI Agents to request intervention
   const requestInterventionCommand = vscode.commands.registerCommand('code-compa.requestIntervention', async (payload: {
     type?: string;
@@ -199,7 +223,13 @@ function startSidecar(context: vscode.ExtensionContext) {
 
   // 2. Spawn sidecar child process
   console.log(`Spawning sidecar: ${binPath} -workspace-path ${workspacePath}`);
-  sidecarProcess = spawn(binPath, ['-workspace-path', workspacePath]);
+
+  const env = { ...process.env };
+  if (context.extensionMode === vscode.ExtensionMode.Development) {
+    env.CODE_COMPA_ENV = 'development';
+  }
+
+  sidecarProcess = spawn(binPath, ['-workspace-path', workspacePath], { env });
 
   // Buffer for reading the first line of stdout (config JSON)
   let stdoutBuffer = '';
