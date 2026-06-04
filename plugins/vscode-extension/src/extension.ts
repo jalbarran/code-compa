@@ -120,6 +120,22 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(testTelemetryCommand);
 
+  // Register command for testing native HITL API prompts (Spec 07 verification)
+  const testNativeHITLCommand = vscode.commands.registerCommand('code-compa.testNativeHITL', async () => {
+    vscode.window.showInformationMessage('Initiating Native HITL Test...');
+    try {
+      const choice = await vscode.window.showInformationMessage(
+        "¿Confirmas la ejecución de los tests?",
+        "Sí, ejecutar",
+        "No, cancelar"
+      );
+      vscode.window.showInformationMessage(`Intercepción completada: ${choice}`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Error en test de intercepción: ${err.message || err}`);
+    }
+  });
+  context.subscriptions.push(testNativeHITLCommand);
+
   // Register command for executing commands with risk verification
   const runCommand = vscode.commands.registerCommand('code-compa.runCommand', async (args: {
     command: string;
