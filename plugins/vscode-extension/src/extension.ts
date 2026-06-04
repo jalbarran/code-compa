@@ -113,12 +113,169 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(requestInterventionCommand);
 
+  // Register telemetry command for testing
+  const testTelemetryCommand = vscode.commands.registerCommand('code-compa.testTelemetry', async () => {
+    vscode.window.showInformationMessage('Sending test telemetry...');
+    await dispatchTelemetryEvent('TEST_EVENT', 'Test Event', 'This is a test telemetry log from VS Code.');
+  });
+  context.subscriptions.push(testTelemetryCommand);
+
+  // Register command for executing commands with risk verification
+  const runCommand = vscode.commands.registerCommand('code-compa.runCommand', async (args: {
+    command: string;
+    directory?: string;
+    title?: string;
+  }) => {
+    const risk = analyzeCommandRisk(args.command);
+    if (risk === 'HIGH' || risk === 'MEDIUM') {
+      const response: any = await vscode.commands.executeCommand('code-compa.requestIntervention', {
+        type: 'COMMAND_EXECUTION_REQUEST',
+        payload: {
+          title: args.title || 'Execute High-Risk Command',
+          description: `An agent requested to run: ${args.command}`,
+          command: args.command,
+          directory: args.directory || (vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '/tmp'),
+          riskLevel: risk,
+          allowsTextInput: true
+        }
+      });
+
+      if (response?.selectedOptionId !== 'APPROVE') {
+        throw new Error(`Execution rejected by user: ${response?.feedbackText || 'No feedback provided'}`);
+      }
+    }
+
+    // Spawn / run in VS Code terminal
+    const terminal = vscode.window.createTerminal({
+      name: 'Code Compa Agent Execution',
+      cwd: args.directory
+    });
+    terminal.show();
+    terminal.sendText(args.command);
+    return { success: true };
+  });
+  context.subscriptions.push(runCommand);
+
+  // Set up observers
+  setupTerminalObserver(context);
+  setupFileSystemWatcher(context);
+
   // Auto-start on activation
   startSidecar(context);
 }
 
 export function deactivate() {
   stopSidecar();
+}
+
+async function dispatchTelemetryEvent(
+  type: string,
+  title: string,
+  description: string,
+  extra: Record<string, any> = {}
+) {
+  try {
+    const client = getClient();
+    await client.postTelemetryEvent({
+      type,
+      metadata: {
+        ide: 'Antigravity IDE',
+        agentName: 'Code-Compa-Watcher',
+        timestamp: BigInt(Math.floor(Date.now() / 1000)),
+      },
+      title,
+      description,
+      payloadJson: JSON.stringify(extra),
+    });
+  } catch (err: any) {
+    console.error('Failed to post telemetry event:', err.message || err);
+  }
+}
+
+function analyzeCommandRisk(command: string): 'HIGH' | 'MEDIUM' | 'LOW' {
+  const highRiskPatterns = [
+    /rm\s+-[rR]*f/,
+    /git\s+push\s+.*--force/,
+    /npm\s+publish/,
+    /docker-compose\s+down/
+  ];
+  const mediumRiskPatterns = [
+    /npm\s+install/,
+    /pip\s+install/,
+    /db:migrate/,
+    /chmod\s+/
+  ];
+
+  for (const regex of highRiskPatterns) {
+    if (regex.test(command)) {
+      return 'HIGH';
+    }
+  }
+
+  for (const regex of mediumRiskPatterns) {
+    if (regex.test(command)) {
+      return 'MEDIUM';
+    }
+  }
+
+  return 'LOW';
+}
+
+function setupTerminalObserver(context: vscode.ExtensionContext) {
+  if ('onDidStartTerminalShellExecution' in (vscode.window as any)) {
+    context.subscriptions.push(
+      (vscode.window as any).onDidStartTerminalShellExecution(async (event: any) => {
+        const commandLine = event.execution.commandLine.value;
+        const directory = event.shellIntegration?.cwd?.fsPath || '';
+        await dispatchTelemetryEvent('TERMINAL_COMMAND_STARTED', 'Terminal Command Started', `Running: ${commandLine}`, {
+          command: commandLine,
+          directory,
+          riskLevel: analyzeCommandRisk(commandLine)
+        });
+      })
+    );
+
+    context.subscriptions.push(
+      (vscode.window as any).onDidEndTerminalShellExecution(async (event: any) => {
+        const commandLine = event.execution.commandLine.value;
+        const exitCode = event.exitCode ?? 0;
+        await dispatchTelemetryEvent('TERMINAL_COMMAND_ENDED', 'Terminal Command Ended', `Finished: ${commandLine} (Exit Code: ${exitCode})`, {
+          command: commandLine,
+          exitCode
+        });
+      })
+    );
+  }
+}
+
+function setupFileSystemWatcher(context: vscode.ExtensionContext) {
+  const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+
+  watcher.onDidCreate(async (uri) => {
+    const relPath = vscode.workspace.asRelativePath(uri);
+    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
+    await dispatchTelemetryEvent('FILE_CREATED', 'File Created', `Created file: ${relPath}`, {
+      filePath: relPath
+    });
+  });
+
+  watcher.onDidChange(async (uri) => {
+    const relPath = vscode.workspace.asRelativePath(uri);
+    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
+    await dispatchTelemetryEvent('FILE_MUTATED', 'File Modified', `Modified file: ${relPath}`, {
+      filePath: relPath
+    });
+  });
+
+  watcher.onDidDelete(async (uri) => {
+    const relPath = vscode.workspace.asRelativePath(uri);
+    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
+    await dispatchTelemetryEvent('FILE_DELETED', 'File Deleted', `Deleted file: ${relPath}`, {
+      filePath: relPath
+    });
+  });
+
+  context.subscriptions.push(watcher);
 }
 
 function getClient() {

@@ -42,6 +42,9 @@ const (
 	// CompanionServiceRequestInterventionProcedure is the fully-qualified name of the
 	// CompanionService's RequestIntervention RPC.
 	CompanionServiceRequestInterventionProcedure = "/codecompa.v1.CompanionService/RequestIntervention"
+	// CompanionServicePostTelemetryEventProcedure is the fully-qualified name of the CompanionService's
+	// PostTelemetryEvent RPC.
+	CompanionServicePostTelemetryEventProcedure = "/codecompa.v1.CompanionService/PostTelemetryEvent"
 )
 
 // CompanionServiceClient is a client for the codecompa.v1.CompanionService service.
@@ -52,6 +55,8 @@ type CompanionServiceClient interface {
 	RespondToIntervention(context.Context, *connect.Request[v1.RespondToInterventionRequest]) (*connect.Response[v1.RespondToInterventionResponse], error)
 	// The IDE extension (or local agent) calls this to request human intervention and wait for the response
 	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
+	// The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
+	PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error)
 }
 
 // NewCompanionServiceClient constructs a client for the codecompa.v1.CompanionService service. By
@@ -79,6 +84,11 @@ func NewCompanionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			baseURL+CompanionServiceRequestInterventionProcedure,
 			opts...,
 		),
+		postTelemetryEvent: connect.NewClient[v1.PostTelemetryEventRequest, v1.PostTelemetryEventResponse](
+			httpClient,
+			baseURL+CompanionServicePostTelemetryEventProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -87,6 +97,7 @@ type companionServiceClient struct {
 	streamAgentEvents     *connect.Client[v1.StreamAgentEventsRequest, v1.AgentEvent]
 	respondToIntervention *connect.Client[v1.RespondToInterventionRequest, v1.RespondToInterventionResponse]
 	requestIntervention   *connect.Client[v1.RequestInterventionRequest, v1.RequestInterventionResponse]
+	postTelemetryEvent    *connect.Client[v1.PostTelemetryEventRequest, v1.PostTelemetryEventResponse]
 }
 
 // StreamAgentEvents calls codecompa.v1.CompanionService.StreamAgentEvents.
@@ -104,6 +115,11 @@ func (c *companionServiceClient) RequestIntervention(ctx context.Context, req *c
 	return c.requestIntervention.CallUnary(ctx, req)
 }
 
+// PostTelemetryEvent calls codecompa.v1.CompanionService.PostTelemetryEvent.
+func (c *companionServiceClient) PostTelemetryEvent(ctx context.Context, req *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error) {
+	return c.postTelemetryEvent.CallUnary(ctx, req)
+}
+
 // CompanionServiceHandler is an implementation of the codecompa.v1.CompanionService service.
 type CompanionServiceHandler interface {
 	// The mobile app calls this stream to receive real-time events from the AI agent
@@ -112,6 +128,8 @@ type CompanionServiceHandler interface {
 	RespondToIntervention(context.Context, *connect.Request[v1.RespondToInterventionRequest]) (*connect.Response[v1.RespondToInterventionResponse], error)
 	// The IDE extension (or local agent) calls this to request human intervention and wait for the response
 	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
+	// The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
+	PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error)
 }
 
 // NewCompanionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -135,6 +153,11 @@ func NewCompanionServiceHandler(svc CompanionServiceHandler, opts ...connect.Han
 		svc.RequestIntervention,
 		opts...,
 	)
+	companionServicePostTelemetryEventHandler := connect.NewUnaryHandler(
+		CompanionServicePostTelemetryEventProcedure,
+		svc.PostTelemetryEvent,
+		opts...,
+	)
 	return "/codecompa.v1.CompanionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CompanionServiceStreamAgentEventsProcedure:
@@ -143,6 +166,8 @@ func NewCompanionServiceHandler(svc CompanionServiceHandler, opts ...connect.Han
 			companionServiceRespondToInterventionHandler.ServeHTTP(w, r)
 		case CompanionServiceRequestInterventionProcedure:
 			companionServiceRequestInterventionHandler.ServeHTTP(w, r)
+		case CompanionServicePostTelemetryEventProcedure:
+			companionServicePostTelemetryEventHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -162,4 +187,8 @@ func (UnimplementedCompanionServiceHandler) RespondToIntervention(context.Contex
 
 func (UnimplementedCompanionServiceHandler) RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.RequestIntervention is not implemented"))
+}
+
+func (UnimplementedCompanionServiceHandler) PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.PostTelemetryEvent is not implemented"))
 }

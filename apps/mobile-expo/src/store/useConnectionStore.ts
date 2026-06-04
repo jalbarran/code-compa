@@ -14,6 +14,7 @@ interface ConnectionState {
   errorMessage: string | null;
   queue: AgentEvent[];
   history: AgentEvent[];
+  telemetryLogs: AgentEvent[];
 
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
@@ -30,6 +31,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   errorMessage: null,
   queue: [],
   history: [],
+  telemetryLogs: [],
 
   connect: async (ip, port, token) => {
     if (activeAbortController) {
@@ -37,7 +39,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       activeAbortController = null;
     }
 
-    set({ ip, port, token, status: 'CONNECTING', errorMessage: null, queue: [] });
+    set({ ip, port, token, status: 'CONNECTING', errorMessage: null, queue: [], telemetryLogs: [] });
 
     const transport = createConnectTransport({
       baseUrl: `http://${ip}:${port}`,
@@ -61,10 +63,18 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         try {
           for await (const event of stream) {
             set((state) => {
-              if (state.queue.some((e) => e.eventId === event.eventId)) {
-                return state;
+              const isTelemetry = event.type.startsWith('FILE_') || event.type.startsWith('TERMINAL_') || event.type.includes('TEST_EVENT');
+              if (isTelemetry) {
+                if (state.telemetryLogs.some((e) => e.eventId === event.eventId)) {
+                  return state;
+                }
+                return { telemetryLogs: [event, ...state.telemetryLogs] };
+              } else {
+                if (state.queue.some((e) => e.eventId === event.eventId)) {
+                  return state;
+                }
+                return { queue: [event, ...state.queue] };
               }
-              return { queue: [event, ...state.queue] };
             });
           }
         } catch (streamErr: any) {
@@ -86,7 +96,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       activeAbortController.abort();
       activeAbortController = null;
     }
-    set({ ip: null, port: null, token: null, status: 'DISCONNECTED', queue: [], errorMessage: null });
+    set({ ip: null, port: null, token: null, status: 'DISCONNECTED', queue: [], telemetryLogs: [], errorMessage: null });
   },
 
   respond: async (eventId, optionId, feedbackText = '') => {

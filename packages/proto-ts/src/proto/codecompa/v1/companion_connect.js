@@ -46,6 +46,16 @@ exports.CompanionService = {
             O: companion_pb_js_1.RequestInterventionResponse,
             kind: protobuf_1.MethodKind.Unary,
         },
+        /**
+         * The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
+         *
+         * @generated from rpc codecompa.v1.CompanionService.PostTelemetryEvent
+         */
+        postTelemetryEvent: {
+            name: "PostTelemetryEvent",
+            I: companion_pb_js_1.PostTelemetryEventRequest,
+            O: companion_pb_js_1.PostTelemetryEventResponse,
+            kind: protobuf_1.MethodKind.Unary,
+        },
     }
 };
-//# sourceMappingURL=companion_connect.js.map

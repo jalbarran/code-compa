@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -94,6 +95,57 @@ func (s *CompanionServer) RequestIntervention(
 		SelectedOptionId: response.SelectedOptionId,
 		FeedbackText:     response.FeedbackText,
 	}), nil
+}
+
+func (s *CompanionServer) PostTelemetryEvent(
+	ctx context.Context,
+	req *connect.Request[v1.PostTelemetryEventRequest],
+) (*connect.Response[v1.PostTelemetryEventResponse], error) {
+	eventID := "tel-" + uuid.New().String()[:8]
+
+	payload := &v1.AgentPayload{
+		Title:       req.Msg.Title,
+		Description: req.Msg.Description,
+	}
+
+	if req.Msg.PayloadJson != "" {
+		var extra map[string]interface{}
+		if err := json.Unmarshal([]byte(req.Msg.PayloadJson), &extra); err == nil {
+			if cmd, ok := extra["command"].(string); ok {
+				payload.Command = cmd
+			}
+			if dir, ok := extra["directory"].(string); ok {
+				payload.Directory = dir
+			}
+			if diff, ok := extra["diff"].(string); ok {
+				payload.Diff = diff
+			}
+			if prompt, ok := extra["prompt"].(string); ok {
+				payload.Prompt = prompt
+			}
+			if risk, ok := extra["riskLevel"].(string); ok {
+				payload.RiskLevel = risk
+			}
+		}
+	}
+
+	event := &v1.AgentEvent{
+		EventId:  eventID,
+		Type:     req.Msg.Type,
+		Metadata: req.Msg.Metadata,
+		Payload:  payload,
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.eventsChan <- event:
+		// Broadcasted downstream
+	default:
+		return nil, errors.New("event queue full")
+	}
+
+	return connect.NewResponse(&v1.PostTelemetryEventResponse{Success: true}), nil
 }
 
 // QueueEvent adds an event to be streamed to the mobile client and waits for approval.

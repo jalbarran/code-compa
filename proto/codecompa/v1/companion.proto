@@ -13,6 +13,9 @@ service CompanionService {
 
   // The IDE extension (or local agent) calls this to request human intervention and wait for the response
   rpc RequestIntervention(RequestInterventionRequest) returns (RequestInterventionResponse);
+
+  // The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
+  rpc PostTelemetryEvent(PostTelemetryEventRequest) returns (PostTelemetryEventResponse);
 }
 
 message StreamAgentEventsRequest {}
@@ -68,4 +71,16 @@ message RequestInterventionRequest {
 message RequestInterventionResponse {
   string selected_option_id = 1;
   string feedback_text = 2;
+}
+
+message PostTelemetryEventRequest {
+  string type = 1; // e.g. "TERMINAL_COMMAND_STARTED", "FILE_CREATED"
+  AgentMetadata metadata = 2;
+  string title = 3;
+  string description = 4;
+  string payload_json = 5; // Extra dynamic properties
+}
+
+message PostTelemetryEventResponse {
+  bool success = 1;
 }

@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AgentEvent, RequestInterventionRequest, RequestInterventionResponse, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
+import { AgentEvent, PostTelemetryEventRequest, PostTelemetryEventResponse, RequestInterventionRequest, RequestInterventionResponse, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -43,6 +43,17 @@ export const CompanionService = {
       name: "RequestIntervention",
       I: RequestInterventionRequest,
       O: RequestInterventionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
+     *
+     * @generated from rpc codecompa.v1.CompanionService.PostTelemetryEvent
+     */
+    postTelemetryEvent: {
+      name: "PostTelemetryEvent",
+      I: PostTelemetryEventRequest,
+      O: PostTelemetryEventResponse,
       kind: MethodKind.Unary,
     },
   }

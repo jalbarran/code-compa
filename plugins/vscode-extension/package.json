@@ -19,6 +19,10 @@
       {
         "command": "code-compa.triggerMockIntervention",
         "title": "Code Compa: Trigger Mock Intervention"
+      },
+      {
+        "command": "code-compa.testTelemetry",
+        "title": "Code Compa: Test Telemetry"
       }
     ],
     "viewsContainers": {

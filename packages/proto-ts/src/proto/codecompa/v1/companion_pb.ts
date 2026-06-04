@@ -459,3 +459,105 @@ export class RequestInterventionResponse extends Message<RequestInterventionResp
   }
 }
 
+/**
+ * @generated from message codecompa.v1.PostTelemetryEventRequest
+ */
+export class PostTelemetryEventRequest extends Message<PostTelemetryEventRequest> {
+  /**
+   * e.g. "TERMINAL_COMMAND_STARTED", "FILE_CREATED"
+   *
+   * @generated from field: string type = 1;
+   */
+  type = "";
+
+  /**
+   * @generated from field: codecompa.v1.AgentMetadata metadata = 2;
+   */
+  metadata?: AgentMetadata;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description = "";
+
+  /**
+   * Extra dynamic properties
+   *
+   * @generated from field: string payload_json = 5;
+   */
+  payloadJson = "";
+
+  constructor(data?: PartialMessage<PostTelemetryEventRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.PostTelemetryEventRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "metadata", kind: "message", T: AgentMetadata },
+    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "payload_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PostTelemetryEventRequest {
+    return new PostTelemetryEventRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PostTelemetryEventRequest {
+    return new PostTelemetryEventRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PostTelemetryEventRequest {
+    return new PostTelemetryEventRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PostTelemetryEventRequest | PlainMessage<PostTelemetryEventRequest> | undefined, b: PostTelemetryEventRequest | PlainMessage<PostTelemetryEventRequest> | undefined): boolean {
+    return proto3.util.equals(PostTelemetryEventRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.PostTelemetryEventResponse
+ */
+export class PostTelemetryEventResponse extends Message<PostTelemetryEventResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<PostTelemetryEventResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.PostTelemetryEventResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PostTelemetryEventResponse {
+    return new PostTelemetryEventResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PostTelemetryEventResponse {
+    return new PostTelemetryEventResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PostTelemetryEventResponse {
+    return new PostTelemetryEventResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PostTelemetryEventResponse | PlainMessage<PostTelemetryEventResponse> | undefined, b: PostTelemetryEventResponse | PlainMessage<PostTelemetryEventResponse> | undefined): boolean {
+    return proto3.util.equals(PostTelemetryEventResponse, a, b);
+  }
+}
+

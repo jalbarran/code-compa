@@ -4,7 +4,7 @@
 /* eslint-disable */
 // @ts-nocheck
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RequestInterventionResponse = exports.RequestInterventionRequest = exports.RespondToInterventionResponse = exports.RespondToInterventionRequest = exports.DecisionOption = exports.AgentPayload = exports.AgentMetadata = exports.AgentEvent = exports.StreamAgentEventsRequest = void 0;
+exports.PostTelemetryEventResponse = exports.PostTelemetryEventRequest = exports.RequestInterventionResponse = exports.RequestInterventionRequest = exports.RespondToInterventionResponse = exports.RespondToInterventionRequest = exports.DecisionOption = exports.AgentPayload = exports.AgentMetadata = exports.AgentEvent = exports.StreamAgentEventsRequest = void 0;
 const protobuf_1 = require("@bufbuild/protobuf");
 /**
  * @generated from message codecompa.v1.StreamAgentEventsRequest
@@ -386,4 +386,89 @@ class RequestInterventionResponse extends protobuf_1.Message {
     }
 }
 exports.RequestInterventionResponse = RequestInterventionResponse;
-//# sourceMappingURL=companion_pb.js.map
+/**
+ * @generated from message codecompa.v1.PostTelemetryEventRequest
+ */
+class PostTelemetryEventRequest extends protobuf_1.Message {
+    /**
+     * e.g. "TERMINAL_COMMAND_STARTED", "FILE_CREATED"
+     *
+     * @generated from field: string type = 1;
+     */
+    type = "";
+    /**
+     * @generated from field: codecompa.v1.AgentMetadata metadata = 2;
+     */
+    metadata;
+    /**
+     * @generated from field: string title = 3;
+     */
+    title = "";
+    /**
+     * @generated from field: string description = 4;
+     */
+    description = "";
+    /**
+     * Extra dynamic properties
+     *
+     * @generated from field: string payload_json = 5;
+     */
+    payloadJson = "";
+    constructor(data) {
+        super();
+        protobuf_1.proto3.util.initPartial(data, this);
+    }
+    static runtime = protobuf_1.proto3;
+    static typeName = "codecompa.v1.PostTelemetryEventRequest";
+    static fields = protobuf_1.proto3.util.newFieldList(() => [
+        { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "metadata", kind: "message", T: AgentMetadata },
+        { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 4, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 5, name: "payload_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new PostTelemetryEventRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new PostTelemetryEventRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new PostTelemetryEventRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return protobuf_1.proto3.util.equals(PostTelemetryEventRequest, a, b);
+    }
+}
+exports.PostTelemetryEventRequest = PostTelemetryEventRequest;
+/**
+ * @generated from message codecompa.v1.PostTelemetryEventResponse
+ */
+class PostTelemetryEventResponse extends protobuf_1.Message {
+    /**
+     * @generated from field: bool success = 1;
+     */
+    success = false;
+    constructor(data) {
+        super();
+        protobuf_1.proto3.util.initPartial(data, this);
+    }
+    static runtime = protobuf_1.proto3;
+    static typeName = "codecompa.v1.PostTelemetryEventResponse";
+    static fields = protobuf_1.proto3.util.newFieldList(() => [
+        { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new PostTelemetryEventResponse().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new PostTelemetryEventResponse().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new PostTelemetryEventResponse().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return protobuf_1.proto3.util.equals(PostTelemetryEventResponse, a, b);
+    }
+}
+exports.PostTelemetryEventResponse = PostTelemetryEventResponse;
