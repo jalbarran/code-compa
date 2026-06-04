@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AgentEvent, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
+import { AgentEvent, RequestInterventionRequest, RequestInterventionResponse, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -32,6 +32,17 @@ export const CompanionService = {
       name: "RespondToIntervention",
       I: RespondToInterventionRequest,
       O: RespondToInterventionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * The IDE extension (or local agent) calls this to request human intervention and wait for the response
+     *
+     * @generated from rpc codecompa.v1.CompanionService.RequestIntervention
+     */
+    requestIntervention: {
+      name: "RequestIntervention",
+      I: RequestInterventionRequest,
+      O: RequestInterventionResponse,
       kind: MethodKind.Unary,
     },
   }

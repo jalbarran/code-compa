@@ -99,7 +99,7 @@ export class AgentEvent extends Message<AgentEvent> {
  */
 export class AgentMetadata extends Message<AgentMetadata> {
   /**
-   * e.g. "Antigravity_2.0"
+   * e.g. "VS Code"
    *
    * @generated from field: string ide = 1;
    */
@@ -186,6 +186,22 @@ export class AgentPayload extends Message<AgentPayload> {
    */
   allowsTextInput = false;
 
+  /**
+   * Enriched fields for Phase 3
+   *
+   * Optional: Unified Git diff format
+   *
+   * @generated from field: string diff = 8;
+   */
+  diff = "";
+
+  /**
+   * Optional: Prompt or system instruction block
+   *
+   * @generated from field: string prompt = 9;
+   */
+  prompt = "";
+
   constructor(data?: PartialMessage<AgentPayload>) {
     super();
     proto3.util.initPartial(data, this);
@@ -201,6 +217,8 @@ export class AgentPayload extends Message<AgentPayload> {
     { no: 5, name: "risk_level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "options", kind: "message", T: DecisionOption, repeated: true },
     { no: 7, name: "allows_text_input", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "diff", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentPayload {
@@ -346,6 +364,98 @@ export class RespondToInterventionResponse extends Message<RespondToIntervention
 
   static equals(a: RespondToInterventionResponse | PlainMessage<RespondToInterventionResponse> | undefined, b: RespondToInterventionResponse | PlainMessage<RespondToInterventionResponse> | undefined): boolean {
     return proto3.util.equals(RespondToInterventionResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.RequestInterventionRequest
+ */
+export class RequestInterventionRequest extends Message<RequestInterventionRequest> {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type = "";
+
+  /**
+   * @generated from field: codecompa.v1.AgentMetadata metadata = 2;
+   */
+  metadata?: AgentMetadata;
+
+  /**
+   * @generated from field: codecompa.v1.AgentPayload payload = 3;
+   */
+  payload?: AgentPayload;
+
+  constructor(data?: PartialMessage<RequestInterventionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.RequestInterventionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "metadata", kind: "message", T: AgentMetadata },
+    { no: 3, name: "payload", kind: "message", T: AgentPayload },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RequestInterventionRequest {
+    return new RequestInterventionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RequestInterventionRequest {
+    return new RequestInterventionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RequestInterventionRequest {
+    return new RequestInterventionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RequestInterventionRequest | PlainMessage<RequestInterventionRequest> | undefined, b: RequestInterventionRequest | PlainMessage<RequestInterventionRequest> | undefined): boolean {
+    return proto3.util.equals(RequestInterventionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.RequestInterventionResponse
+ */
+export class RequestInterventionResponse extends Message<RequestInterventionResponse> {
+  /**
+   * @generated from field: string selected_option_id = 1;
+   */
+  selectedOptionId = "";
+
+  /**
+   * @generated from field: string feedback_text = 2;
+   */
+  feedbackText = "";
+
+  constructor(data?: PartialMessage<RequestInterventionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.RequestInterventionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "selected_option_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "feedback_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RequestInterventionResponse {
+    return new RequestInterventionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RequestInterventionResponse {
+    return new RequestInterventionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RequestInterventionResponse {
+    return new RequestInterventionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RequestInterventionResponse | PlainMessage<RequestInterventionResponse> | undefined, b: RequestInterventionResponse | PlainMessage<RequestInterventionResponse> | undefined): boolean {
+    return proto3.util.equals(RequestInterventionResponse, a, b);
   }
 }
 

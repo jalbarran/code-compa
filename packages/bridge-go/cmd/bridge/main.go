@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// 3. Acquire Lockfile
-	acquiredPort, acquired, err := lockfile.CheckAndAcquire(*workspacePath, port)
+	acquiredPort, acquired, err := lockfile.CheckAndAcquire(*workspacePath, port, token)
 	if err != nil {
 		listener.Close()
 		log.Fatalf("Error acquiring lockfile: %v", err)

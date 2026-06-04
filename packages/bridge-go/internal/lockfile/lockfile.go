@@ -10,8 +10,9 @@ import (
 )
 
 type LockData struct {
-	Pid  int `json:"pid"`
-	Port int `json:"port"`
+	Pid   int    `json:"pid"`
+	Port  int    `json:"port"`
+	Token string `json:"token"`
 }
 
 func GetLockfilePath(workspacePath string) string {
@@ -32,8 +33,8 @@ func ReadLockfile(path string) (*LockData, error) {
 	return &lock, nil
 }
 
-func WriteLockfile(path string, pid int, port int) error {
-	lock := LockData{Pid: pid, Port: port}
+func WriteLockfile(path string, pid int, port int, token string) error {
+	lock := LockData{Pid: pid, Port: port, Token: token}
 	data, err := json.Marshal(lock)
 	if err != nil {
 		return err
@@ -41,7 +42,7 @@ func WriteLockfile(path string, pid int, port int) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func CheckAndAcquire(workspacePath string, port int) (int, bool, error) {
+func CheckAndAcquire(workspacePath string, port int, token string) (int, bool, error) {
 	path := GetLockfilePath(workspacePath)
 	lock, err := ReadLockfile(path)
 	if err == nil {
@@ -52,7 +53,7 @@ func CheckAndAcquire(workspacePath string, port int) (int, bool, error) {
 		_ = os.Remove(path)
 	}
 
-	err = WriteLockfile(path, os.Getpid(), port)
+	err = WriteLockfile(path, os.Getpid(), port, token)
 	if err != nil {
 		return 0, false, err
 	}

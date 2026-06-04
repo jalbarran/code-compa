@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	v1 "github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1"
 	"github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1/apiv1connect"
@@ -70,6 +71,29 @@ func (s *CompanionServer) RespondToIntervention(
 	}
 
 	return connect.NewResponse(&v1.RespondToInterventionResponse{Success: true}), nil
+}
+
+func (s *CompanionServer) RequestIntervention(
+	ctx context.Context,
+	req *connect.Request[v1.RequestInterventionRequest],
+) (*connect.Response[v1.RequestInterventionResponse], error) {
+	eventID := "evt-" + uuid.New().String()[:8]
+	event := &v1.AgentEvent{
+		EventId:  eventID,
+		Type:     req.Msg.Type,
+		Metadata: req.Msg.Metadata,
+		Payload:  req.Msg.Payload,
+	}
+
+	response, err := s.QueueEvent(ctx, event)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&v1.RequestInterventionResponse{
+		SelectedOptionId: response.SelectedOptionId,
+		FeedbackText:     response.FeedbackText,
+	}), nil
 }
 
 // QueueEvent adds an event to be streamed to the mobile client and waits for approval.

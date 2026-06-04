@@ -39,6 +39,9 @@ const (
 	// CompanionServiceRespondToInterventionProcedure is the fully-qualified name of the
 	// CompanionService's RespondToIntervention RPC.
 	CompanionServiceRespondToInterventionProcedure = "/codecompa.v1.CompanionService/RespondToIntervention"
+	// CompanionServiceRequestInterventionProcedure is the fully-qualified name of the
+	// CompanionService's RequestIntervention RPC.
+	CompanionServiceRequestInterventionProcedure = "/codecompa.v1.CompanionService/RequestIntervention"
 )
 
 // CompanionServiceClient is a client for the codecompa.v1.CompanionService service.
@@ -47,6 +50,8 @@ type CompanionServiceClient interface {
 	StreamAgentEvents(context.Context, *connect.Request[v1.StreamAgentEventsRequest]) (*connect.ServerStreamForClient[v1.AgentEvent], error)
 	// The mobile app responds to a pending human intervention request
 	RespondToIntervention(context.Context, *connect.Request[v1.RespondToInterventionRequest]) (*connect.Response[v1.RespondToInterventionResponse], error)
+	// The IDE extension (or local agent) calls this to request human intervention and wait for the response
+	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
 }
 
 // NewCompanionServiceClient constructs a client for the codecompa.v1.CompanionService service. By
@@ -69,6 +74,11 @@ func NewCompanionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			baseURL+CompanionServiceRespondToInterventionProcedure,
 			opts...,
 		),
+		requestIntervention: connect.NewClient[v1.RequestInterventionRequest, v1.RequestInterventionResponse](
+			httpClient,
+			baseURL+CompanionServiceRequestInterventionProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -76,6 +86,7 @@ func NewCompanionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 type companionServiceClient struct {
 	streamAgentEvents     *connect.Client[v1.StreamAgentEventsRequest, v1.AgentEvent]
 	respondToIntervention *connect.Client[v1.RespondToInterventionRequest, v1.RespondToInterventionResponse]
+	requestIntervention   *connect.Client[v1.RequestInterventionRequest, v1.RequestInterventionResponse]
 }
 
 // StreamAgentEvents calls codecompa.v1.CompanionService.StreamAgentEvents.
@@ -88,12 +99,19 @@ func (c *companionServiceClient) RespondToIntervention(ctx context.Context, req 
 	return c.respondToIntervention.CallUnary(ctx, req)
 }
 
+// RequestIntervention calls codecompa.v1.CompanionService.RequestIntervention.
+func (c *companionServiceClient) RequestIntervention(ctx context.Context, req *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error) {
+	return c.requestIntervention.CallUnary(ctx, req)
+}
+
 // CompanionServiceHandler is an implementation of the codecompa.v1.CompanionService service.
 type CompanionServiceHandler interface {
 	// The mobile app calls this stream to receive real-time events from the AI agent
 	StreamAgentEvents(context.Context, *connect.Request[v1.StreamAgentEventsRequest], *connect.ServerStream[v1.AgentEvent]) error
 	// The mobile app responds to a pending human intervention request
 	RespondToIntervention(context.Context, *connect.Request[v1.RespondToInterventionRequest]) (*connect.Response[v1.RespondToInterventionResponse], error)
+	// The IDE extension (or local agent) calls this to request human intervention and wait for the response
+	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
 }
 
 // NewCompanionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -112,12 +130,19 @@ func NewCompanionServiceHandler(svc CompanionServiceHandler, opts ...connect.Han
 		svc.RespondToIntervention,
 		opts...,
 	)
+	companionServiceRequestInterventionHandler := connect.NewUnaryHandler(
+		CompanionServiceRequestInterventionProcedure,
+		svc.RequestIntervention,
+		opts...,
+	)
 	return "/codecompa.v1.CompanionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CompanionServiceStreamAgentEventsProcedure:
 			companionServiceStreamAgentEventsHandler.ServeHTTP(w, r)
 		case CompanionServiceRespondToInterventionProcedure:
 			companionServiceRespondToInterventionHandler.ServeHTTP(w, r)
+		case CompanionServiceRequestInterventionProcedure:
+			companionServiceRequestInterventionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,4 +158,8 @@ func (UnimplementedCompanionServiceHandler) StreamAgentEvents(context.Context, *
 
 func (UnimplementedCompanionServiceHandler) RespondToIntervention(context.Context, *connect.Request[v1.RespondToInterventionRequest]) (*connect.Response[v1.RespondToInterventionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.RespondToIntervention is not implemented"))
+}
+
+func (UnimplementedCompanionServiceHandler) RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.RequestIntervention is not implemented"))
 }

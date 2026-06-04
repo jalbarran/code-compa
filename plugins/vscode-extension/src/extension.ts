@@ -4,6 +4,10 @@ import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import * as crypto from 'crypto';
 
+import { createPromiseClient } from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-node';
+import { CompanionService } from 'code-compa-proto-ts/src/proto/codecompa/v1/companion_connect';
+
 let sidecarProcess: ChildProcess | null = null;
 let sidecarPort: number | null = null;
 let sidecarToken: string | null = null;
@@ -19,12 +23,87 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(startBridgeCommand);
 
+  // Register command for AI Agents to request intervention
+  const requestInterventionCommand = vscode.commands.registerCommand('code-compa.requestIntervention', async (payload: {
+    type?: string;
+    metadata?: {
+      ide?: string;
+      agentName?: string;
+      timestamp?: number;
+    };
+    payload: {
+      title: string;
+      description?: string;
+      command?: string;
+      directory?: string;
+      riskLevel?: string;
+      diff?: string;
+      prompt?: string;
+      options?: Array<{ id: string; label: string }>;
+      allowsTextInput?: boolean;
+    };
+  }) => {
+    try {
+      const client = getClient();
+      const response = await client.requestIntervention({
+        type: payload.type || 'COMMAND_EXECUTION_REQUEST',
+        metadata: {
+          ide: payload.metadata?.ide || 'VS Code',
+          agentName: payload.metadata?.agentName || 'AI Agent',
+          timestamp: BigInt(payload.metadata?.timestamp || Math.floor(Date.now() / 1000)),
+        },
+        payload: {
+          title: payload.payload?.title || 'Intervention Requested',
+          description: payload.payload?.description || '',
+          command: payload.payload?.command || '',
+          directory: payload.payload?.directory || '',
+          riskLevel: payload.payload?.riskLevel || 'LOW',
+          diff: payload.payload?.diff || '',
+          prompt: payload.payload?.prompt || '',
+          options: (payload.payload?.options || []).map(opt => ({
+            id: opt.id,
+            label: opt.label,
+          })),
+          allowsTextInput: payload.payload?.allowsTextInput ?? true,
+        }
+      });
+      return {
+        selectedOptionId: response.selectedOptionId,
+        feedbackText: response.feedbackText,
+      };
+    } catch (err: any) {
+      console.error('RequestIntervention error:', err);
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Failed to communicate with Code Compa bridge: {0}", err.message || err)
+      );
+      throw err;
+    }
+  });
+  context.subscriptions.push(requestInterventionCommand);
+
   // Auto-start on activation
   startSidecar(context);
 }
 
 export function deactivate() {
   stopSidecar();
+}
+
+function getClient() {
+  if (!sidecarPort || !sidecarToken) {
+    throw new Error('Sidecar bridge is not running or credentials are not loaded');
+  }
+  const transport = createConnectTransport({
+    baseUrl: `http://localhost:${sidecarPort}`,
+    httpVersion: '1.1',
+    interceptors: [
+      (next) => async (req) => {
+        req.header.set('Authorization', `Bearer ${sidecarToken}`);
+        return next(req);
+      }
+    ]
+  });
+  return createPromiseClient(CompanionService, transport);
 }
 
 function getWorkspaceHash(): string {
@@ -41,6 +120,27 @@ function getWorkspacePath(): string {
   return workspaceFolders && workspaceFolders.length > 0
     ? workspaceFolders[0].uri.fsPath
     : path.join(process.env.HOME || process.env.USERPROFILE || '.', '.code-compa-default');
+}
+
+function getLockfilePath(): string {
+  const hash = getWorkspaceHash();
+  const tmpDir = process.env.TMPDIR || process.env.TMP || process.env.TEMP || '/tmp';
+  return path.join(tmpDir, `code-compa-${hash}.lock`);
+}
+
+function readLockfile(): { port: number; token: string } | null {
+  try {
+    const lockPath = getLockfilePath();
+    if (fs.existsSync(lockPath)) {
+      const data = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+      if (data.port && data.token) {
+        return { port: data.port, token: data.token };
+      }
+    }
+  } catch (err) {
+    console.error('Failed to read lockfile:', err);
+  }
+  return null;
 }
 
 function getBinaryPath(context: vscode.ExtensionContext): string {
@@ -117,14 +217,20 @@ function startSidecar(context: vscode.ExtensionContext) {
         const config = JSON.parse(firstLine);
         if (config.port && config.status) {
           sidecarPort = config.port;
-          sidecarToken = config.token || sidecarToken;
           
           if (config.status === 'READY') {
+            sidecarToken = config.token || sidecarToken;
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge started successfully on port {0}", sidecarPort!)
             );
             restartAttempts = 0; // reset on success
           } else if (config.status === 'ALREADY_RUNNING') {
+            // Read port & token from lockfile
+            const lockData = readLockfile();
+            if (lockData) {
+              sidecarPort = lockData.port;
+              sidecarToken = lockData.token;
+            }
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
             );

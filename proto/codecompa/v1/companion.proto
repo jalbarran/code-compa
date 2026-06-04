@@ -10,6 +10,9 @@ service CompanionService {
   
   // The mobile app responds to a pending human intervention request
   rpc RespondToIntervention(RespondToInterventionRequest) returns (RespondToInterventionResponse);
+
+  // The IDE extension (or local agent) calls this to request human intervention and wait for the response
+  rpc RequestIntervention(RequestInterventionRequest) returns (RequestInterventionResponse);
 }
 
 message StreamAgentEventsRequest {}
@@ -22,7 +25,7 @@ message AgentEvent {
 }
 
 message AgentMetadata {
-  string ide = 1;         // e.g. "Antigravity_2.0"
+  string ide = 1;         // e.g. "VS Code"
   string agent_name = 2;  // e.g. "Claude-Code-Agent"
   int64 timestamp = 3;
 }
@@ -35,6 +38,10 @@ message AgentPayload {
   string risk_level = 5;
   repeated DecisionOption options = 6;
   bool allows_text_input = 7;
+  
+  // Enriched fields for Phase 3
+  string diff = 8;        // Optional: Unified Git diff format
+  string prompt = 9;      // Optional: Prompt or system instruction block
 }
 
 message DecisionOption {
@@ -50,4 +57,15 @@ message RespondToInterventionRequest {
 
 message RespondToInterventionResponse {
   bool success = 1;
+}
+
+message RequestInterventionRequest {
+  string type = 1;
+  AgentMetadata metadata = 2;
+  AgentPayload payload = 3;
+}
+
+message RequestInterventionResponse {
+  string selected_option_id = 1;
+  string feedback_text = 2;
 }

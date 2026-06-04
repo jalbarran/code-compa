@@ -104,6 +104,63 @@ export default function DashboardScreen() {
                     <Text fos="$3" col="$green10" ff="$mono">{currentEvent.payload.command}</Text>
                   </YStack>
                 )}
+
+                {currentEvent.payload?.prompt && (
+                  <YStack
+                    borderLeftWidth={3}
+                    borderLeftColor="$blue10"
+                    bg="$background"
+                    p="$3"
+                    br="$2"
+                    mt="$2"
+                    gap="$1"
+                  >
+                    <Text fos="$2" col="$colorMuted" fow="bold" textTransform="uppercase" letterSpacing={0.5}>
+                      {t('dashboard.promptTitle')}
+                    </Text>
+                    <Text fos="$3" col="$color" ff="$mono">
+                      {currentEvent.payload.prompt}
+                    </Text>
+                  </YStack>
+                )}
+
+                {currentEvent.payload?.diff && (
+                  <YStack bg="$background" br="$2" mt="$2" ov="hidden" borderWidth={1} borderColor="$borderColor">
+                    <XStack bg="$backgroundPress" p="$2.5" jc="space-between" ai="center" borderBottomWidth={1} borderBottomColor="$borderColor">
+                      <Text fos="$2" col="$colorMuted" fow="bold" textTransform="uppercase" letterSpacing={0.5}>
+                        {t('dashboard.diffTitle')}
+                      </Text>
+                    </XStack>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ maxHeight: 300 }}>
+                      <YStack p="$3" bg="$background" minWidth="100%">
+                        {currentEvent.payload.diff.split('\n').map((line, idx) => {
+                          let lineBg = 'transparent';
+                          let lineCol = '$color';
+                          if (line.startsWith('+')) {
+                            lineBg = 'rgba(0, 255, 0, 0.1)';
+                            lineCol = '$green10';
+                          } else if (line.startsWith('-')) {
+                            lineBg = 'rgba(255, 0, 0, 0.1)';
+                            lineCol = '$red10';
+                          } else if (line.startsWith('@@')) {
+                            lineBg = 'rgba(0, 0, 255, 0.05)';
+                            lineCol = '$blue10';
+                          }
+                          return (
+                            <XStack key={idx} bg={lineBg} px="$2" py="$0.5" br="$1">
+                              <Text fos="$2" col="$colorMuted" w={20} selectText={false} ta="right" mr="$2">
+                                {idx + 1}
+                              </Text>
+                              <Text fos="$2" col={lineCol} ff="$mono">
+                                {line}
+                              </Text>
+                            </XStack>
+                          );
+                        })}
+                      </YStack>
+                    </ScrollView>
+                  </YStack>
+                )}
               </YStack>
 
               {currentEvent.payload?.allowsTextInput && (

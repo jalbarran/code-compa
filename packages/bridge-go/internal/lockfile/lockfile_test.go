@@ -14,7 +14,7 @@ func TestLockfileLifecycle(t *testing.T) {
 	defer os.Remove(lockPath)
 
 	// Acquire lock
-	port, acquired, err := CheckAndAcquire(workspace, 9999)
+	port, acquired, err := CheckAndAcquire(workspace, 9999, "test-token")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -31,7 +31,7 @@ func TestLockfileLifecycle(t *testing.T) {
 	}
 
 	// Try acquiring again in the same workspace (same PID)
-	port2, acquired2, err := CheckAndAcquire(workspace, 8888)
+	port2, acquired2, err := CheckAndAcquire(workspace, 8888, "other-token")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -52,13 +52,13 @@ func TestStaleLockfile(t *testing.T) {
 	defer os.Remove(lockPath)
 
 	// Write lockfile with a fake dead PID (e.g. 99999)
-	err := WriteLockfile(lockPath, 99999, 8765)
+	err := WriteLockfile(lockPath, 99999, 8765, "stale-token")
 	if err != nil {
 		t.Fatalf("Failed to write lockfile: %v", err)
 	}
 
 	// Acquire lock
-	port, acquired, err := CheckAndAcquire(workspace, 9999)
+	port, acquired, err := CheckAndAcquire(workspace, 9999, "fresh-token")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

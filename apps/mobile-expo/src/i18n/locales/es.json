@@ -37,7 +37,9 @@
     "autonomousDescription": "El agente se está ejecutando de forma autónoma en su IDE. Las solicitudes de intervención pendientes se transmitirán aquí.",
     "sessionHistory": "Historial de Sesión",
     "resolved": "Resuelto",
-    "resolvedUppercase": "RESUELTO"
+    "resolvedUppercase": "RESUELTO",
+    "promptTitle": "Instrucciones / Prompt de Sistema",
+    "diffTitle": "Cambios de Código Propuestos (Diff)"
   },
   "tabs": {
     "home": "Inicio",

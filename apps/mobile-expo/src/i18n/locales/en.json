@@ -37,7 +37,9 @@
     "autonomousDescription": "Agent is running autonomously in your IDE. Pending intervention requests will stream here.",
     "sessionHistory": "Session History",
     "resolved": "Resolved",
-    "resolvedUppercase": "RESOLVED"
+    "resolvedUppercase": "RESOLVED",
+    "promptTitle": "System Prompt / Instructions",
+    "diffTitle": "Proposed Code Changes (Diff)"
   },
   "tabs": {
     "home": "Home",

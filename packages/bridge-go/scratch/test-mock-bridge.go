@@ -88,6 +88,8 @@ func main() {
 				Directory:       "/home/user/projects/code-compa",
 				RiskLevel:       "HIGH",
 				AllowsTextInput: true,
+				Diff:            "diff --git a/schema.sql b/schema.sql\n--- a/schema.sql\n+++ b/schema.sql\n@@ -1,4 +1,5 @@\n CREATE TABLE users (\n   id INT PRIMARY KEY,\n-  name VARCHAR(50)\n+  name VARCHAR(100),\n+  email VARCHAR(255) UNIQUE NOT NULL\n );",
+				Prompt:          "Run migrations to alter users table. Add email field and update username size restriction.",
 				Options: []*v1.DecisionOption{
 					{Id: "REJECT", Label: "Reject & Stop"},
 					{Id: "APPROVE", Label: "Run Migration"},
