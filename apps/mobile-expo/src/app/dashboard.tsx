@@ -148,7 +148,7 @@ export default function DashboardScreen() {
                           }
                           return (
                             <XStack key={idx} bg={lineBg} px="$2" py="$0.5" br="$1">
-                              <Text fos="$2" col="$colorMuted" w={20} selectText={false} ta="right" mr="$2">
+                              <Text fos="$2" col="$colorMuted" w={20} ta="right" mr="$2">
                                 {idx + 1}
                               </Text>
                               <Text fos="$2" col={lineCol} ff="$mono">
@@ -170,6 +170,10 @@ export default function DashboardScreen() {
                     value={feedback}
                     onChangeText={setFeedback}
                     placeholder={t('dashboard.feedbackPlaceholder')}
+                    placeholderTextColor="$gray9"
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
                   />
                 </YStack>
               )}
