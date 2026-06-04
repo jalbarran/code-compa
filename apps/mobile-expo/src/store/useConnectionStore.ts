@@ -3,8 +3,18 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import { createClient } from '@connectrpc/connect';
 import { CompanionService } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_connect';
 import { AgentEvent } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_pb';
+import { Audio } from 'expo-av';
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR';
+export type UserTheme = 'system' | 'light' | 'dark';
+export type UserLanguage = 'en' | 'es';
+
+export interface HistoryEntry {
+  event: AgentEvent;
+  selectedOptionId: string;
+  feedbackText: string;
+  resolvedAt: number; // unix timestamp ms
+}
 
 interface ConnectionState {
   ip: string | null;
@@ -13,15 +23,42 @@ interface ConnectionState {
   status: ConnectionStatus;
   errorMessage: string | null;
   queue: AgentEvent[];
-  history: AgentEvent[];
+  history: HistoryEntry[];
   telemetryLogs: AgentEvent[];
+
+  // User preferences
+  userTheme: UserTheme;
+  userLanguage: UserLanguage;
+  soundAlertsEnabled: boolean;
 
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
   respond: (eventId: string, optionId: string, feedbackText?: string) => Promise<boolean>;
+
+  // Preferences actions
+  setTheme: (theme: UserTheme) => void;
+  setLanguage: (lang: UserLanguage) => void;
+  setSoundAlertsEnabled: (enabled: boolean) => void;
 }
 
 let activeAbortController: AbortController | null = null;
+
+async function playAlertSound() {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/sounds/notification.wav')
+    );
+    await sound.playAsync();
+    // Release sound after playback to avoid memory leaks
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
+  } catch (err) {
+    console.warn('Failed to play alert sound:', err);
+  }
+}
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   ip: null,
@@ -32,6 +69,15 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   queue: [],
   history: [],
   telemetryLogs: [],
+
+  // Preference defaults
+  userTheme: 'system',
+  userLanguage: 'en',
+  soundAlertsEnabled: true,
+
+  setTheme: (theme) => set({ userTheme: theme }),
+  setLanguage: (lang) => set({ userLanguage: lang }),
+  setSoundAlertsEnabled: (enabled) => set({ soundAlertsEnabled: enabled }),
 
   connect: async (ip, port, token) => {
     if (activeAbortController) {
@@ -72,6 +118,10 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
               } else {
                 if (state.queue.some((e) => e.eventId === event.eventId)) {
                   return state;
+                }
+                // Trigger audio alert for blocking events
+                if (state.soundAlertsEnabled) {
+                  playAlertSound();
                 }
                 return { queue: [event, ...state.queue] };
               }
@@ -128,7 +178,9 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         set((state) => {
           const event = state.queue.find((e) => e.eventId === eventId);
           const newQueue = state.queue.filter((e) => e.eventId !== eventId);
-          const newHistory = event ? [event, ...state.history] : state.history;
+          const newHistory: HistoryEntry[] = event
+            ? [{ event, selectedOptionId: optionId, feedbackText, resolvedAt: Date.now() }, ...state.history]
+            : state.history;
           return { queue: newQueue, history: newHistory };
         });
         return true;

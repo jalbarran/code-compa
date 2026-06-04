@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Test command to trigger mock intervention from the command palette
   const triggerMockCommand = vscode.commands.registerCommand('code-compa.triggerMockIntervention', async () => {
-    vscode.window.showInformationMessage('Triggering mock intervention...');
+    vscode.window.showInformationMessage(vscode.l10n.t('Triggering mock intervention...'));
     try {
       const result = await vscode.commands.executeCommand('code-compa.requestIntervention', {
         type: 'COMMAND_EXECUTION_REQUEST',
@@ -48,9 +48,9 @@ export function activate(context: vscode.ExtensionContext) {
           prompt: 'Integrate connect library dependency'
         }
       });
-      vscode.window.showInformationMessage(`Intervention Resolved: ${JSON.stringify(result)}`);
+      vscode.window.showInformationMessage(vscode.l10n.t('Intervention Resolved: {0}', JSON.stringify(result)));
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Intervention Failed: ${err.message || err}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Intervention Failed: {0}', err.message || err));
     }
   });
   context.subscriptions.push(triggerMockCommand);
@@ -115,23 +115,23 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register telemetry command for testing
   const testTelemetryCommand = vscode.commands.registerCommand('code-compa.testTelemetry', async () => {
-    vscode.window.showInformationMessage('Sending test telemetry...');
+    vscode.window.showInformationMessage(vscode.l10n.t('Sending test telemetry...'));
     await dispatchTelemetryEvent('TEST_EVENT', 'Test Event', 'This is a test telemetry log from VS Code.');
   });
   context.subscriptions.push(testTelemetryCommand);
 
   // Register command for testing native HITL API prompts (Spec 07 verification)
   const testNativeHITLCommand = vscode.commands.registerCommand('code-compa.testNativeHITL', async () => {
-    vscode.window.showInformationMessage('Initiating Native HITL Test...');
+    vscode.window.showInformationMessage(vscode.l10n.t('Initiating Native HITL Test...'));
     try {
       const choice = await vscode.window.showInformationMessage(
-        "¿Confirmas la ejecución de los tests?",
-        "Sí, ejecutar",
-        "No, cancelar"
+        vscode.l10n.t('Do you confirm test execution?'),
+        vscode.l10n.t('Yes, run'),
+        vscode.l10n.t('No, cancel')
       );
-      vscode.window.showInformationMessage(`Intercepción completada: ${choice}`);
+      vscode.window.showInformationMessage(vscode.l10n.t('Interception completed: {0}', choice ?? ''));
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Error en test de intercepción: ${err.message || err}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('Interception test error: {0}', err.message || err));
     }
   });
   context.subscriptions.push(testNativeHITLCommand);

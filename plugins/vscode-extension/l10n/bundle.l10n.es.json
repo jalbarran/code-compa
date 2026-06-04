@@ -3,5 +3,16 @@
   "Code Compa Bridge started successfully on port {0}": "El puente de Code Compa se inició correctamente en el puerto {0}.",
   "Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.": "El puente de Code Compa ya se está ejecutando para este espacio de trabajo en el puerto {0}. Reutilizando instancia.",
   "Code Compa Bridge failed to start or crashed repeatedly.": "El puente de Code Compa falló al iniciar o se cayó repetidamente.",
-  "Restart Bridge": "Reiniciar Puente"
+  "Restart Bridge": "Reiniciar Puente",
+  "Triggering mock intervention...": "Lanzando intervención de prueba...",
+  "Intervention Resolved: {0}": "Intervención resuelta: {0}",
+  "Intervention Failed: {0}": "Intervención fallida: {0}",
+  "Sending test telemetry...": "Enviando telemetría de prueba...",
+  "Initiating Native HITL Test...": "Iniciando prueba HITL nativa...",
+  "Do you confirm test execution?": "¿Confirmas la ejecución de los tests?",
+  "Yes, run": "Sí, ejecutar",
+  "No, cancel": "No, cancelar",
+  "Interception completed: {0}": "Intercepción completada: {0}",
+  "Interception test error: {0}": "Error en prueba de intercepción: {0}",
+  "Failed to communicate with Code Compa bridge: {0}": "Error al comunicarse con el puente de Code Compa: {0}"
 }

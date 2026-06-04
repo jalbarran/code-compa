@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { ScrollView } from 'react-native';
-import { YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Theme } from 'tamagui';
-import { useConnectionStore } from '../store/useConnectionStore';
+import {
+  YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Sheet
+} from 'tamagui';
+import { useRouter } from 'expo-router';
+import { useConnectionStore, HistoryEntry } from '../store/useConnectionStore';
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { ip, port, status, queue, history, telemetryLogs, disconnect, respond } = useConnectionStore();
   const [feedback, setFeedback] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<HistoryEntry | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleAction = async (eventId: string, optionId: string) => {
     setSubmittingId(eventId);
@@ -18,6 +24,11 @@ export default function DashboardScreen() {
     } finally {
       setSubmittingId(null);
     }
+  };
+
+  const openHistoryDetail = (entry: HistoryEntry) => {
+    setSelectedHistoryEntry(entry);
+    setSheetOpen(true);
   };
 
   const getStatusColor = () => {
@@ -39,6 +50,10 @@ export default function DashboardScreen() {
     }
   };
 
+  const formatTimestamp = (ms: number) => {
+    return new Date(ms).toLocaleString();
+  };
+
   const currentEvent = queue[0];
 
   return (
@@ -46,7 +61,7 @@ export default function DashboardScreen() {
       {/* Header section */}
       <XStack jc="space-between" ai="center" mb="$4">
         <YStack>
-          <Text fos="$6" fow="bold" col="$color">{"Code Compa"}</Text>
+          <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
           <XStack ai="center" gap="$2">
             <Circle size={10} bg={getStatusColor()} />
             <Text col="$colorMuted" fos="$2">
@@ -54,9 +69,18 @@ export default function DashboardScreen() {
             </Text>
           </XStack>
         </YStack>
-        <Button size="$3" variant="outlined" onPress={disconnect}>
-          {t('dashboard.disconnect')}
-        </Button>
+        <XStack gap="$2">
+          <Button
+            size="$3"
+            variant="outlined"
+            onPress={() => router.push('/settings')}
+          >
+            {'⚙️'}
+          </Button>
+          <Button size="$3" variant="outlined" onPress={disconnect}>
+            {t('dashboard.disconnect')}
+          </Button>
+        </XStack>
       </XStack>
 
       <Separator />
@@ -251,18 +275,28 @@ export default function DashboardScreen() {
           <YStack mt="$6" gap="$3">
             <Text fow="bold" fos="$4" col="$colorMuted">{t('dashboard.sessionHistory')}</Text>
             <Separator />
-            {history.map((h) => (
-              <Card key={h.eventId} borderWidth={1} p="$3" theme="dark">
+            {history.map((entry) => (
+              <Card
+                key={entry.event.eventId}
+                borderWidth={1}
+                p="$3"
+                theme="dark"
+                pressStyle={{ opacity: 0.85, scale: 0.98 }}
+                onPress={() => openHistoryDetail(entry)}
+              >
                 <XStack jc="space-between" ai="center">
                   <YStack f={1}>
                     <Text fos="$3" fow="bold" col="$color" numberOfLines={1}>
-                      {h.payload?.title || h.type}
+                      {entry.event.payload?.title || entry.event.type}
                     </Text>
                     <Text fos="$2" col="$colorMuted">
-                      {t('dashboard.resolved')} • {h.metadata?.agentName}
+                      {t('dashboard.resolved')} • {entry.event.metadata?.agentName}
                     </Text>
                   </YStack>
-                  <Text col="$green10" fow="bold" fos="$2">{t('dashboard.resolvedUppercase')}</Text>
+                  <XStack ai="center" gap="$2">
+                    <Text col="$green10" fow="bold" fos="$2">{t('dashboard.resolvedUppercase')}</Text>
+                    <Text col="$colorMuted" fos="$2">›</Text>
+                  </XStack>
                 </XStack>
               </Card>
             ))}
@@ -271,7 +305,7 @@ export default function DashboardScreen() {
 
         {telemetryLogs.length > 0 && (
           <YStack mt="$6" gap="$3">
-            <Text fow="bold" fos="$4" col="$colorMuted">{"Live Telemetry Logs"}</Text>
+            <Text fow="bold" fos="$4" col="$colorMuted">{'Live Telemetry Logs'}</Text>
             <Separator />
             {telemetryLogs.map((log) => {
               let icon = 'ℹ️';
@@ -308,7 +342,140 @@ export default function DashboardScreen() {
           </YStack>
         )}
       </ScrollView>
+
+      {/* Session History Detail Sheet */}
+      <Sheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        snapPoints={[85]}
+        dismissOnSnapToBottom
+        modal
+      >
+        <Sheet.Overlay />
+        <Sheet.Handle />
+        <Sheet.Frame p="$4" bg="$background">
+          {selectedHistoryEntry && (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <YStack gap="$4">
+                {/* Sheet Header */}
+                <XStack jc="space-between" ai="center">
+                  <Text fos="$5" fow="bold" col="$color">
+                    {t('historyDetail.title')}
+                  </Text>
+                  <Button size="$3" variant="outlined" onPress={() => setSheetOpen(false)}>
+                    {t('historyDetail.close')}
+                  </Button>
+                </XStack>
+
+                {/* Metadata Card */}
+                <Card borderWidth={1} p="$3" gap="$2" bg="$backgroundPress">
+                  <Text fos="$3" fow="bold" col="$colorMuted" textTransform="uppercase" mb="$1">
+                    {t('historyDetail.sectionMetadata')}
+                  </Text>
+                  <Separator mb="$2" />
+                  {[
+                    { label: t('historyDetail.labelIde'), value: selectedHistoryEntry.event.metadata?.ide || '—' },
+                    { label: t('historyDetail.labelAgent'), value: selectedHistoryEntry.event.metadata?.agentName || '—' },
+                    { label: t('historyDetail.labelStatus'), value: t('dashboard.resolvedUppercase') },
+                    { label: t('historyDetail.labelTimestamp'), value: formatTimestamp(selectedHistoryEntry.resolvedAt) },
+                  ].map(({ label, value }) => (
+                    <XStack key={label} jc="space-between" ai="center" py="$1">
+                      <Text fos="$2" col="$colorMuted" fow="bold">{label}</Text>
+                      <Text fos="$2" col="$color" ta="right" numberOfLines={1} style={{ flex: 1, textAlign: 'right', marginLeft: 8 }}>{value}</Text>
+                    </XStack>
+                  ))}
+                </Card>
+
+                {/* Request Details */}
+                <Card borderWidth={1} p="$3" gap="$2">
+                  <Text fos="$3" fow="bold" col="$colorMuted" textTransform="uppercase" mb="$1">
+                    {t('historyDetail.sectionDetails')}
+                  </Text>
+                  <Separator mb="$2" />
+                  <Text fos="$5" fow="bold" col="$color" mb="$1">
+                    {selectedHistoryEntry.event.payload?.title}
+                  </Text>
+                  {selectedHistoryEntry.event.payload?.description && (
+                    <Text fos="$3" col="$colorMuted" mb="$2">
+                      {selectedHistoryEntry.event.payload.description}
+                    </Text>
+                  )}
+                  {selectedHistoryEntry.event.payload?.directory && (
+                    <YStack bg="$backgroundPress" p="$2" br="$2" mb="$2">
+                      <Text fos="$2" col="$colorMuted" fow="bold">{t('historyDetail.labelDirectory')}</Text>
+                      <Text fos="$2" col="$color" ff="$mono">{selectedHistoryEntry.event.payload.directory}</Text>
+                    </YStack>
+                  )}
+                  {selectedHistoryEntry.event.payload?.command && (
+                    <YStack bg="$backgroundPress" p="$2" br="$2" mb="$2">
+                      <Text fos="$2" col="$colorMuted" fow="bold">{t('historyDetail.labelCommand')}</Text>
+                      <Text fos="$2" col="$green10" ff="$mono">{selectedHistoryEntry.event.payload.command}</Text>
+                    </YStack>
+                  )}
+                  {selectedHistoryEntry.event.payload?.prompt && (
+                    <YStack borderLeftWidth={3} borderLeftColor="$blue10" bg="$backgroundPress" p="$2" br="$2" mb="$2">
+                      <Text fos="$2" col="$colorMuted" fow="bold" mb="$1">{t('historyDetail.labelPrompt')}</Text>
+                      <Text fos="$2" col="$color" ff="$mono">{selectedHistoryEntry.event.payload.prompt}</Text>
+                    </YStack>
+                  )}
+                  {selectedHistoryEntry.event.payload?.diff && (
+                    <YStack bg="$backgroundPress" br="$2" ov="hidden" borderWidth={1} borderColor="$borderColor">
+                      <XStack bg="$background" p="$2" borderBottomWidth={1} borderBottomColor="$borderColor">
+                        <Text fos="$2" col="$colorMuted" fow="bold">{t('historyDetail.labelDiff')}</Text>
+                      </XStack>
+                      <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 200 }}>
+                        <YStack p="$2">
+                          {selectedHistoryEntry.event.payload.diff.split('\n').map((line, idx) => {
+                            let lineCol = '$color';
+                            if (line.startsWith('+')) lineCol = '$green10';
+                            else if (line.startsWith('-')) lineCol = '$red10';
+                            else if (line.startsWith('@@')) lineCol = '$blue10';
+                            return (
+                              <Text key={idx} fos="$2" col={lineCol} ff="$mono">{line}</Text>
+                            );
+                          })}
+                        </YStack>
+                      </ScrollView>
+                    </YStack>
+                  )}
+                </Card>
+
+                {/* User Response Card */}
+                <Card borderWidth={1} p="$3" gap="$2" bg="$backgroundPress">
+                  <Text fos="$3" fow="bold" col="$colorMuted" textTransform="uppercase" mb="$1">
+                    {t('historyDetail.sectionResponse')}
+                  </Text>
+                  <Separator mb="$2" />
+                  <XStack jc="space-between" ai="center" mb="$2">
+                    <Text fos="$2" col="$colorMuted" fow="bold">{t('historyDetail.labelSelected')}</Text>
+                    <XStack
+                      bg={selectedHistoryEntry.selectedOptionId.toLowerCase().includes('approve') ? '$green3' : '$red3'}
+                      px="$3"
+                      py="$1"
+                      br="$10"
+                    >
+                      <Text
+                        fow="bold"
+                        fos="$2"
+                        col={selectedHistoryEntry.selectedOptionId.toLowerCase().includes('approve') ? '$green10' : '$red10'}
+                        textTransform="uppercase"
+                      >
+                        {selectedHistoryEntry.selectedOptionId}
+                      </Text>
+                    </XStack>
+                  </XStack>
+                  <YStack>
+                    <Text fos="$2" col="$colorMuted" fow="bold" mb="$1">{t('historyDetail.labelFeedback')}</Text>
+                    <Text fos="$3" col={selectedHistoryEntry.feedbackText ? '$color' : '$colorMuted'} fontStyle={selectedHistoryEntry.feedbackText ? 'normal' : 'italic'}>
+                      {selectedHistoryEntry.feedbackText || t('historyDetail.noFeedback')}
+                    </Text>
+                  </YStack>
+                </Card>
+              </YStack>
+            </ScrollView>
+          )}
+        </Sheet.Frame>
+      </Sheet>
     </YStack>
   );
 }
-
