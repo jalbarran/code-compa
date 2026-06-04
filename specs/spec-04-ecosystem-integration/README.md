@@ -179,7 +179,8 @@ We update `apps/mobile-expo/src/app/dashboard.tsx` to handle the new `diff` and 
 - Verify that the extension establishes the connection to the sidecar, calls the RPC, and waits for approval.
 
 ### 6.3. Mobile App Verification
-- Open the mobile companion app, scan the connection QR code.
+- Open the mobile companion app.
+- Manually enter the local IP, port, and token (printed by the running sidecar process) to connect.
 - Trigger an event containing a code diff and a prompt block.
 - Verify that the mobile dashboard displays:
   - The command execution card.
