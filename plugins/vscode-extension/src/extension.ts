@@ -176,6 +176,15 @@ export function activate(context: vscode.ExtensionContext) {
   setupTerminalObserver(context);
   setupFileSystemWatcher(context);
 
+  // Hook native API interception (Spec 07)
+  activateHITLInterception(context);
+
+  // Hook Webview message interception
+  activateWebviewInterception(context);
+
+  // Hook Command execution interception
+  activateCommandInterception(context);
+
   // Auto-start on activation
   startSidecar(context);
 }
@@ -631,4 +640,217 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     </body>
     </html>`;
   }
+}
+
+function shouldRedirectToMobile(): boolean {
+  return !!sidecarPort && !!sidecarToken;
+}
+
+function activateHITLInterception(context: vscode.ExtensionContext) {
+  // 1. Intercept showInformationMessage
+  const originalShowInfo = vscode.window.showInformationMessage;
+  (vscode.window as any).showInformationMessage = async function (
+    message: string,
+    ...args: any[]
+  ) {
+    if (shouldRedirectToMobile()) {
+      return await redirectInfoPromptToMobile(message, args);
+    }
+    return originalShowInfo.apply(vscode.window, [message, ...args] as any);
+  };
+
+  // 2. Intercept showWarningMessage
+  const originalShowWarning = vscode.window.showWarningMessage;
+  (vscode.window as any).showWarningMessage = async function (
+    message: string,
+    ...args: any[]
+  ) {
+    if (shouldRedirectToMobile()) {
+      return await redirectInfoPromptToMobile(message, args);
+    }
+    return originalShowWarning.apply(vscode.window, [message, ...args] as any);
+  };
+
+  // 3. Intercept showErrorMessage
+  const originalShowError = vscode.window.showErrorMessage;
+  (vscode.window as any).showErrorMessage = async function (
+    message: string,
+    ...args: any[]
+  ) {
+    if (shouldRedirectToMobile()) {
+      return await redirectInfoPromptToMobile(message, args);
+    }
+    return originalShowError.apply(vscode.window, [message, ...args] as any);
+  };
+
+  // 4. Intercept showQuickPick
+  const originalShowQuickPick = vscode.window.showQuickPick;
+  (vscode.window as any).showQuickPick = async function (
+    items: any[],
+    options?: any,
+    token?: any
+  ) {
+    if (shouldRedirectToMobile()) {
+      return await redirectQuickPickToMobile(items, options);
+    }
+    return originalShowQuickPick.call(vscode.window, items, options, token);
+  };
+
+  // 5. Intercept showInputBox
+  const originalShowInputBox = vscode.window.showInputBox;
+  (vscode.window as any).showInputBox = async function (
+    options?: any,
+    token?: any
+  ) {
+    if (shouldRedirectToMobile()) {
+      return await redirectInputBoxToMobile(options);
+    }
+    return originalShowInputBox.call(vscode.window, options, token);
+  };
+}
+
+async function redirectInfoPromptToMobile(message: string, items: any[]): Promise<any> {
+  const options: Array<{ id: string; label: string }> = [];
+  let messageOptions: any = undefined;
+  const actionItems: any[] = [];
+
+  for (const arg of items) {
+    if (typeof arg === 'string') {
+      options.push({ id: arg, label: arg });
+      actionItems.push(arg);
+    } else if (arg && typeof arg === 'object') {
+      if ('title' in arg) {
+        options.push({ id: arg.title, label: arg.title });
+        actionItems.push(arg);
+      } else {
+        messageOptions = arg;
+      }
+    }
+  }
+
+  try {
+    const response: any = await vscode.commands.executeCommand('code-compa.requestIntervention', {
+      type: 'CONFIRMATION',
+      payload: {
+        title: messageOptions?.modal ? 'Confirmation Required' : 'Notification Alert',
+        description: message,
+        options: options,
+        allowsTextInput: false
+      }
+    });
+
+    const choice = response?.selectedOptionId;
+    if (choice) {
+      const matched = actionItems.find(item => (typeof item === 'string' ? item : item.title) === choice);
+      return matched;
+    }
+  } catch (err) {
+    console.error('Mobile prompt failed, falling back:', err);
+  }
+  return undefined;
+}
+
+async function redirectQuickPickToMobile(items: any[], options?: any): Promise<any> {
+  const mappedOptions = items.map(item => {
+    const label = typeof item === 'string' ? item : (item.label || item.description || JSON.stringify(item));
+    return { id: label, label };
+  });
+
+  try {
+    const response: any = await vscode.commands.executeCommand('code-compa.requestIntervention', {
+      type: 'CHOICE_SELECTION',
+      payload: {
+        title: options?.placeHolder || 'Select Option',
+        description: options?.title || 'An agent requests choice selection.',
+        options: mappedOptions,
+        allowsTextInput: false
+      }
+    });
+
+    const choice = response?.selectedOptionId;
+    if (choice) {
+      const matched = items.find(item => {
+        const label = typeof item === 'string' ? item : (item.label || item.description || JSON.stringify(item));
+        return label === choice;
+      });
+      return matched;
+    }
+  } catch (err) {
+    console.error('Mobile quick pick failed, falling back:', err);
+  }
+  return undefined;
+}
+
+async function redirectInputBoxToMobile(options?: any): Promise<string | undefined> {
+  try {
+    const response: any = await vscode.commands.executeCommand('code-compa.requestIntervention', {
+      type: 'TEXT_INPUT_REQUEST',
+      payload: {
+        title: options?.title || 'Text Input Required',
+        description: options?.prompt || 'Provide text input for the AI agent.',
+        allowsTextInput: true
+      }
+    });
+
+    return response?.feedbackText;
+  } catch (err) {
+    console.error('Mobile input box failed, falling back:', err);
+  }
+  return undefined;
+}
+
+function activateWebviewInterception(context: vscode.ExtensionContext) {
+  console.log('[Webview Interceptor] Activating webview message interception...');
+
+  // 1. Intercept registerWebviewViewProvider
+  const originalRegisterProvider = vscode.window.registerWebviewViewProvider;
+  (vscode.window as any).registerWebviewViewProvider = function (viewId: string, provider: vscode.WebviewViewProvider, options?: any) {
+    console.log(`[Webview Interceptor] Wrapping provider for view: ${viewId}`);
+    const wrappedProvider: vscode.WebviewViewProvider = {
+      resolveWebviewView: function (webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken) {
+        console.log(`[Webview Interceptor] Resolved Webview View: ${viewId}`);
+        wrapWebview(webviewView.webview, viewId);
+        return provider.resolveWebviewView(webviewView, context, token);
+      }
+    };
+    return originalRegisterProvider.call(vscode.window, viewId, wrappedProvider, options);
+  };
+
+  // 2. Intercept createWebviewPanel
+  const originalCreatePanel = vscode.window.createWebviewPanel;
+  (vscode.window as any).createWebviewPanel = function (viewType: string, title: string, showOptions: any, options?: any) {
+    const panel = originalCreatePanel.call(vscode.window, viewType, title, showOptions, options);
+    console.log(`[Webview Interceptor] Created Webview Panel: ${viewType} - ${title}`);
+    wrapWebview(panel.webview, viewType);
+    return panel;
+  };
+}
+
+function wrapWebview(webview: vscode.Webview, id: string) {
+  // Intercept postMessage
+  const originalPostMessage = webview.postMessage;
+  webview.postMessage = function (message: any) {
+    console.log(`[Webview Interceptor] [${id}] postMessage:`, JSON.stringify(message));
+    return originalPostMessage.call(webview, message);
+  };
+
+  // Intercept onDidReceiveMessage
+  const originalOnDidReceiveMessage = webview.onDidReceiveMessage;
+  (webview as any).onDidReceiveMessage = function (listener: (e: any) => any, thisArgs?: any, disposables?: vscode.Disposable[]) {
+    const wrappedListener = function (message: any) {
+      console.log(`[Webview Interceptor] [${id}] onDidReceiveMessage:`, JSON.stringify(message));
+      return listener.call(thisArgs, message);
+    };
+    return originalOnDidReceiveMessage.call(webview, wrappedListener, thisArgs, disposables);
+  };
+}
+
+function activateCommandInterception(context: vscode.ExtensionContext) {
+  console.log('[Command Interceptor] Activating command execution interception...');
+
+  const originalExecute = vscode.commands.executeCommand;
+  (vscode.commands as any).executeCommand = function (command: string, ...args: any[]) {
+    console.log(`[Command Interceptor] executeCommand: ${command}`, JSON.stringify(args));
+    return originalExecute.call(vscode.commands, command, ...args);
+  };
 }
