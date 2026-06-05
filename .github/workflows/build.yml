@@ -37,7 +37,9 @@ jobs:
 
     - name: Build Web App (Expo)
       run: |
-        cd apps/mobile-expo
+        cd packages/proto-ts
+        npm ci
+        cd ../../apps/mobile-expo
         npm ci
         npx expo export --platform web
 
