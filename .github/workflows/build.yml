@@ -57,7 +57,7 @@ jobs:
     - name: Package VS Code Extension (VSIX)
       run: |
         cd plugins/vscode-extension
-        npx @vscode/vsce package --no-dependencies
+        npx @vscode/vsce package --allow-missing-repository
 
     - name: Upload VSIX Artifact
       uses: actions/upload-artifact@v4
