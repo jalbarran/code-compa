@@ -19,7 +19,7 @@ The architecture supports two connection modes, configurable via the IDE plugin:
 - **Local-First Privacy (by Default):** With Option 1, source code and repository context never leave the user's Local Area Network (LAN).
 - **Flexible Connectivity:** The plugin/extension offers a configuration to toggle between Local Wi-Fi and Cloud Remote modes.
 - **Multi-IDE Strategy:** An agnostic architecture capable of connecting the same mobile app to the most popular IDEs on the market.
-- **Cross-Platform UI Consistency:** The mobile app targets both Android and iOS with a pixel-consistent interface. A single shared UI codebase produces both native app versions — no platform-specific divergence in screens, components, or design tokens.
+- **Cross-Platform UI Consistency:** The app targets Android, iOS, and Web with a pixel-consistent interface. A single shared UI codebase produces all three versions — no platform-specific divergence in screens, components, or design tokens.
 - **Spec-driven Development:** All technical decisions, features, and implementation tasks (e.g. Go sidecar server setup, IDE settings UI toggle) must be fully documented as specifications under the `specs/` directory before writing code. Specs act as the blueprint that implementations must fulfill.
 
 ---
@@ -28,9 +28,9 @@ The architecture supports two connection modes, configurable via the IDE plugin:
 
 | Component | Technology | Role |
 | :--- | :--- | :--- |
-| **Mobile App** | **Expo (React Native)** | Mobile UI, QR code scanning, and telemetry rendering. Targets both Android and iOS from a single codebase. Uses `@connectrpc/connect-web`. |
-| **Mobile Routing** | **Expo Router** | File-based native navigation for Android and iOS. |
-| **Mobile UI Framework** | **Tamagui** | Cross-platform design system and component library ensuring a pixel-consistent UI across Android and iOS. |
+| **Mobile & Web App** | **Expo (React Native)** | Mobile/Web UI, QR code scanning, and telemetry rendering. Targets Android, iOS, and Web browsers from a single codebase. Uses `@connectrpc/connect-web`. |
+| **App Routing** | **Expo Router** | File-based routing for Android, iOS, and Web. |
+| **UI Framework** | **Tamagui** | Cross-platform design system and component library ensuring a pixel-consistent UI across Android, iOS, and Web. |
 | **Universal Bridge** | **Go (Golang)** | High-performance background process (Sidecar), local Connect-RPC server, and network orchestration. |
 | **IDE Plugins** | **TypeScript / Kotlin** | Thin native integration layers for each IDE (VS Code, JetBrains). Handles connection settings toggle. |
 | **Communication (Local)** | **Connect-RPC (HTTP/JSON)**| Low-latency, strongly-typed channel using unary calls and Server-Streaming over local Wi-Fi / Localhost. |
@@ -114,31 +114,31 @@ To push asynchronous telemetry and Human-in-the-loop requests from the Go sideca
   - _In JetBrains (Kotlin):_ `file.setExecutable(true, false)`
 - **Code Signing (Production):** macOS binaries will go through Apple's notarization process (`codesign`) to prevent OS-level blocks (Gatekeeper). Windows binaries will be digitally signed to prevent antivirus false positives.
 
-### 4.3. Mobile App (Expo Go)
+### 4.3. Mobile & Web App (Expo & Web Client)
 
-- **Expo Go:** Standard Expo Go will be used for mobile development since it is fully sufficient for our requirements (Connect-RPC over HTTP and QR scanning are supported out-of-the-box). This avoids the overhead of custom native builds during development.
-- **Target platforms:** The mobile app is built and released for **both Android and iOS**. A single shared Expo/React Native codebase produces both native versions. There is no web/browser target for the mobile app.
+- **Expo & Web:** Expo is used to target both native mobile environments (Android/iOS) and web browsers. During development, Expo Go is used for native environments, while standard browser sessions are used for the Web target.
+- **Target platforms:** The companion app is built and released for **Android, iOS, and Web**. A single shared Expo/React Native codebase produces all three versions. The web build is exported as static assets and served directly by the Go sidecar.
 - **Cleartext HTTP Permission:** To prevent iOS App Transport Security (ATS) or Android cleartext blockages, the Expo app configuration (`app.json`) will be configured to permit cleartext HTTP communication on local IP ranges for both development and production.
 - **State Management:** `Zustand` will be used to manage the message queue, pending agent requests, and real-time logs reactively and lightweightly.
 
 ### 4.3.1. UI Framework — Tamagui
 
-**Decision:** [Tamagui](https://tamagui.dev) is the exclusive UI framework for all screens and components in the mobile app (`apps/mobile-expo/`).
+**Decision:** [Tamagui](https://tamagui.dev) is the exclusive UI framework for all screens and components in the app (`apps/mobile-expo/`).
 
 **Rationale:**
-- Tamagui is built specifically for React Native and compiles down to optimized native views, ensuring a pixel-consistent interface across **Android and iOS without any platform-specific component forks**.
+- Tamagui is built specifically for React Native and compiles down to optimized native views (for iOS/Android) and clean semantic HTML/CSS (for Web), ensuring a pixel-consistent interface across **Android, iOS, and Web without any platform-specific component forks**.
 - It ships with a fully typed design system (tokens for colors, spacing, typography, radii) that enforces visual consistency at compile time rather than relying on runtime style overrides.
-- Performance: Tamagui's compiler flattens styled components into static native views, eliminating the JS-side style processing overhead common in styled-components alternatives.
+- Performance: Tamagui's compiler flattens styled components into static native views or inline CSS classes, eliminating JS style processing overhead.
 - It integrates natively with Expo Router and supports dark/light mode theming out-of-the-box.
 
 **Usage rules:**
-1. **No platform-specific UI code.** Do not use `Platform.OS === 'android'` or `Platform.OS === 'ios'` checks inside UI components. If a visual difference must exist, it must be expressed through Tamagui's theme/platform token system.
+1. **No platform-specific UI code.** Do not use `Platform.OS === 'android'`, `'ios'`, or `'web'` checks inside UI components. If a visual difference must exist, it must be expressed through Tamagui's theme/platform token system.
 2. **All design tokens** (colors, spacing, font sizes, border radii) must be defined in the Tamagui config (`tamagui.config.ts`) and consumed as tokens — never hardcoded values.
 3. **Component library:** Use Tamagui's built-in primitives (`Stack`, `XStack`, `YStack`, `Text`, `Button`, `Sheet`, etc.) as the base for all components. Custom components must be composed from Tamagui primitives.
 4. **Theming:** Define a dark theme and a light theme in `tamagui.config.ts`. The app respects the OS-level appearance preference (`useColorScheme`) by default.
 
-**Installation (Expo Go compatible):**
-Tamagui works with standard Expo Go without requiring custom native builds, as it operates entirely within React Native's JS runtime.
+**Installation & Build:**
+Tamagui works with standard Expo Go on mobile and transpiles clean web outputs. No custom native builds are required.
 
 ### 4.4. Protobuf & Code-Generation Tooling
 

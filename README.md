@@ -4,7 +4,9 @@
 
 This project does not replace or duplicate the logic of AI agents (such as Gemini or Claude) integrated into **Antigravity IDE** or **VS Code**. Its exclusive purpose is to serve as a bridge so you can step away from your desk, monitor coding progress from your phone, and respond to critical context requests (**Human-in-the-loop**) without disrupting the AI's autonomous workflow.
 
-The mobile app is released for **both Android and iOS** and shares a single UI codebase, ensuring a pixel-consistent experience across both platforms. The companion app and IDE plugin support two communication modes:
+The companion app is built using a single React Native + Tamagui codebase targeting **Android, iOS, and Web**. This ensures a pixel-consistent experience across all platforms. The companion app can be run as a native mobile application or accessed instantly as a local Web App served directly by the IDE extension's background process.
+
+The ecosystem supports two communication modes:
 
 - **Option 1: Direct Local Wi-Fi Connection (Default - Free/Offline):** A local peer-to-peer connection over Wi-Fi requiring zero internet connection.
 - **Option 2: Secure Cloud Remote Connection (Premium/Paid):** A secure internet connection via a cloud relay service for when you are away from the local network. The cloud infrastructure is powered by a separate, proprietary backend repository.
@@ -13,10 +15,10 @@ The mobile app is released for **both Android and iOS** and shares a single UI c
 
 ## 🛠️ Tech Stack
 
-The project is structured as a monorepo that combines high-performance networking with a fast, modern mobile development experience:
+The project is structured as a monorepo that combines high-performance networking with a fast, modern mobile and web development experience:
 
-- **Mobile App:** [Expo (React Native)](https://expo.dev/) with **Expo Router** for native file-based routing. Targets **both Android and iOS** from a single shared codebase.
-- **Mobile UI:** [Tamagui](https://tamagui.dev/) as the UI framework and design system, ensuring a pixel-consistent interface across Android and iOS without platform-specific component forks.
+- **Mobile & Web App:** [Expo (React Native)](https://expo.dev/) with **Expo Router** for native file-based routing. Targets **Android, iOS, and Web** from a single shared codebase.
+- **Mobile & Web UI:** [Tamagui](https://tamagui.dev/) as the UI framework and design system, ensuring a pixel-consistent interface across Android, iOS, and web browsers without platform-specific component forks.
 - **Universal Bridge (Sidecar):** [Go (Golang)](https://go.dev/) to manage concurrency, lightweight network sockets, and the local server lifecycle.
 - **IDE Plugin:** TypeScript using the **VS Code API** (natively compatible with Antigravity IDE, VS Code, and Cursor). Contains settings toggles to switch connection modes.
 - **Communication:** **Connect-RPC** (via unary and Server-Streaming HTTP) over the Local Area Network (LAN) for local mode, and cloud connections for remote mode.
@@ -53,7 +55,7 @@ To avoid duplicating network code and keep IDE plugins as lightweight as possibl
 
 1. **Flexible Connectivity Modes:** The plugin lets you toggle between Local Wi-Fi (default, offline-friendly) and Secure Cloud (paid, internet-required) connections.
 2. **Local-First & Privacy (by Default):** With local mode, communication is strictly local Peer-to-Peer over your Wi-Fi network. No source code or prompts ever travel to central third-party servers.
-3. **Zero-Configuration (QR Handshake):** Upon launching the IDE in local mode, the Go process starts a secure Connect-RPC HTTP server and displays a QR code containing connection credentials (IP + Port + Token) for instant pairing.
+3. **Zero-Configuration (Dual-QR Handshake):** Upon launching the IDE in local mode, the Go process starts a secure Connect-RPC HTTP server. The extension displays two QR options: one to scan with any standard phone camera to open the zero-install Web App instantly, and another to scan within the native companion app for native pairing.
 4. **Automated Native Permissions:** The TypeScript extension automatically ensures correct execution permissions for the Go sidecar binary (`chmod +x` on Unix systems) during activation.
 5. **Spec-driven Development (SDD):** All technical decisions, features, and implementation tasks (e.g., sidecar server implementation, settings toggle UI) must be fully specified and documented in the `specs/` directory before coding. These specs act as the target that the implementation must satisfy.
 
