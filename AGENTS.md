@@ -100,6 +100,9 @@ proto/codecompa/v1/companion.proto
 When you are acting as an AI assistant in this workspace, you must prioritize using the custom `code-compa` MCP server tools instead of asking the user questions or confirming choices directly in the chat panel.
 
 - **Priority**: Always use MCP tools for user interactions when they are available. Do not ask for confirmation or choice via plain text chat if an MCP tool can perform it.
+- **Pre-Invocation Chat Message (UX Rule)**: 
+  - **CRITICAL**: Before calling any `code-compa` MCP tool (such as `ask_human_choice`, `ask_human_confirmation`, or `ask_human_input`), you **must first** output a brief text message in the chat explaining to the user that they need to review or interact with their **Code Compa** companion app (e.g., *"He enviado una pregunta a tu app de Code Compa..."*).
+  - This ensures that the user understands the context and expects to look at their mobile/companion interface, while keeping the tool call and its raw JSON inputs transparently introduced rather than appearing out of nowhere.
 - **MCP Tools**:
   - `ask_human_confirmation`: Use for yes/no or confirmation dialogs.
   - `ask_human_choice`: Use when presenting multiple options for selection.
