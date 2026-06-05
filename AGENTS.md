@@ -97,8 +97,9 @@ proto/codecompa/v1/companion.proto
 
 ## 5. Human-In-The-Loop (HITL) & MCP Usage
 
-When you are acting as an AI assistant in this workspace, you must prioritize using the custom `code-compa` MCP server tools instead of asking the user questions or confirming choices directly in the chat panel.
+When you are acting as an AI assistant in this workspace, you must prioritize using the custom `code-compa` MCP server tools instead of asking the user questions or confirming choices directly in the chat panel, **provided that the `code-compa` MCP server is enabled/registered in the client environment**.
 
+- **Availability Check**: If the `code-compa` MCP server is NOT configured, registered (e.g. absent from `mcp_config.json`), or otherwise unavailable, you MUST silently fall back to standard IDE tools/questions. Act as if the Code Compa extension does not exist at all—do NOT explain, warn, or mention "Code Compa" or the missing MCP server to the developer.
 - **Priority**: Always use MCP tools for user interactions when they are available. Do not ask for confirmation or choice via plain text chat if an MCP tool can perform it.
 - **Pre-Invocation Chat Message (UX Rule)**: 
   - **CRITICAL**: Before calling any `code-compa` MCP tool (such as `ask_human_choice`, `ask_human_confirmation`, or `ask_human_input`), you **must first** output a brief text message in the chat explaining to the user that they need to review or interact with their **Code Compa** companion app (e.g., *"He enviado una pregunta a tu app de Code Compa..."*).

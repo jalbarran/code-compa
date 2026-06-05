@@ -16,8 +16,10 @@ let sidecarToken: string | null = null;
 let restartAttempts = 0;
 const maxRestartAttempts = 1;
 let sidebarProvider: SidebarProvider;
+let extensionContext: vscode.ExtensionContext | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
+  extensionContext = context;
   console.log('Code Compa VS Code extension is active.');
 
   sidebarProvider = new SidebarProvider(context.extensionUri);
@@ -446,7 +448,12 @@ function startSidecar(context: vscode.ExtensionContext) {
             restartAttempts = 0; // reset on success
             sidebarProvider.updateContent();
             // Automatically register MCP server configs
-            registerMcpServerAutomatically(workspacePath, binPath);
+            const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+            if (isRemoteEnabled) {
+              registerMcpServerAutomatically(workspacePath, binPath);
+            } else {
+              unregisterMcpServerAutomatically();
+            }
           } else if (config.status === 'ALREADY_RUNNING') {
             // Read port & token from lockfile
             const lockData = readLockfile();
@@ -459,7 +466,12 @@ function startSidecar(context: vscode.ExtensionContext) {
             );
             sidebarProvider.updateContent();
             // Automatically register MCP server configs
-            registerMcpServerAutomatically(workspacePath, binPath);
+            const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+            if (isRemoteEnabled) {
+              registerMcpServerAutomatically(workspacePath, binPath);
+            } else {
+              unregisterMcpServerAutomatically();
+            }
           }
         }
       } catch (err) {
@@ -546,6 +558,24 @@ class SidebarProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri],
     };
 
+    webviewView.webview.onDidReceiveMessage(async (message) => {
+      if (message.command === 'toggleRemoteMode') {
+        const current = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+        const target = !current;
+        if (extensionContext) {
+          await extensionContext.globalState.update('code-compa.remoteModeEnabled', target);
+        }
+        if (target) {
+          const binPath = getBinaryPath(extensionContext!);
+          const workspacePath = getWorkspacePath();
+          registerMcpServerAutomatically(workspacePath, binPath);
+        } else {
+          unregisterMcpServerAutomatically();
+        }
+        this.updateContent();
+      }
+    });
+
     this.updateContent();
   }
 
@@ -589,6 +619,11 @@ class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private getHtmlForCredentials(ip: string, port: number, token: string, qrDataUrl: string): string {
+    const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+    const remoteModeStatus = isRemoteEnabled ? 'ACTIVE' : 'INACTIVE';
+    const btnLabel = isRemoteEnabled ? 'Deactivate Remote Mode' : 'Activate Remote Mode';
+    const statusColor = isRemoteEnabled ? '#10B981' : '#EF4444';
+
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -598,6 +633,11 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         .description { font-size: 12px; color: var(--vscode-descriptionForeground); text-align: center; margin-bottom: 20px; line-height: 1.4; }
         .qr-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; display: flex; justify-content: center; align-items: center; }
         .qr-img { width: 180px; height: 180px; }
+        .toggle-container { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); box-sizing: border-box; }
+        .status-row { display: flex; justify-content: space-between; width: 100%; font-size: 13px; margin-bottom: 10px; }
+        .status-val { font-weight: bold; color: ${statusColor}; }
+        .toggle-btn { background: #2563EB; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; width: 100%; text-align: center; }
+        .toggle-btn:hover { background: #1D4ED8; }
         .info-card { width: 100%; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); padding: 12px; box-sizing: border-box; }
         .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
         .info-row:last-child { margin-bottom: 0; }
@@ -610,6 +650,13 @@ class SidebarProvider implements vscode.WebviewViewProvider {
       <div class="description">Scan this QR code with the Code Compa mobile app to establish a secure connection.</div>
       <div class="qr-container">
         <img class="qr-img" src="${qrDataUrl}" alt="QR Code" />
+      </div>
+      <div class="toggle-container">
+        <div class="status-row">
+          <span>Remote Mode (MCP/HITL):</span>
+          <span class="status-val">${remoteModeStatus}</span>
+        </div>
+        <button class="toggle-btn" onclick="toggleMode()">${btnLabel}</button>
       </div>
       <div class="info-card">
         <div class="info-row">
@@ -625,6 +672,12 @@ class SidebarProvider implements vscode.WebviewViewProvider {
           <span class="value">${token === 'XXX' ? 'XXX' : token.substring(0, 8) + '...'}</span>
         </div>
       </div>
+      <script>
+        const vscode = acquireVsCodeApi();
+        function toggleMode() {
+          vscode.postMessage({ command: 'toggleRemoteMode' });
+        }
+      </script>
     </body>
     </html>`;
   }
@@ -647,7 +700,8 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 }
 
 function shouldRedirectToMobile(): boolean {
-  return !!sidecarPort && !!sidecarToken;
+  const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+  return isRemoteEnabled && !!sidecarPort && !!sidecarToken;
 }
 
 function activateHITLInterception(context: vscode.ExtensionContext) {
@@ -924,5 +978,56 @@ function updateMcpConfigFile(configPath: string, newMcpConfig: any) {
     console.log(`[MCP Auto-Register] Successfully registered inside: ${configPath}`);
   } catch (err) {
     console.error(`[MCP Auto-Register] Failed to update config at ${configPath}:`, err);
+  }
+}
+
+function unregisterMcpServerAutomatically() {
+  const homeDir = os.homedir();
+  console.log(`[MCP Auto-Unregister] Triggering unregistration`);
+
+  // 1. Configure in Antigravity IDE (Gemini)
+  const antigravityConfigPath = path.join(homeDir, '.gemini', 'config', 'mcp_config.json');
+  removeMcpServerFromFile(antigravityConfigPath);
+
+  // 2. Configure in Claude Desktop
+  const isWin = process.platform === 'win32';
+  let claudeConfigPath = '';
+  if (isWin) {
+    if (process.env.APPDATA) {
+      claudeConfigPath = path.join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json');
+    }
+  } else if (process.platform === 'darwin') {
+    claudeConfigPath = path.join(homeDir, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    claudeConfigPath = path.join(homeDir, '.config', 'Claude', 'claude_desktop_config.json');
+  }
+  if (claudeConfigPath) {
+    removeMcpServerFromFile(claudeConfigPath);
+  }
+
+  // 3. Configure in Cline
+  const clineConfigPath = path.join(homeDir, '.code', 'User', 'globalStorage', 'saoudrizwan.claude-dev', 'settings', 'cline_mcp_settings.json');
+  removeMcpServerFromFile(clineConfigPath);
+
+  // 4. Configure in Roo Code
+  const rooConfigPath = path.join(homeDir, '.code', 'User', 'globalStorage', 'rooloops.roo-cline', 'settings', 'cline_mcp_settings.json');
+  removeMcpServerFromFile(rooConfigPath);
+}
+
+function removeMcpServerFromFile(configPath: string) {
+  try {
+    if (!fs.existsSync(configPath)) {
+      return;
+    }
+    const content = fs.readFileSync(configPath, 'utf8').trim();
+    if (!content) return;
+    const config = JSON.parse(content);
+    if (config.mcpServers && config.mcpServers['code-compa']) {
+      delete config.mcpServers['code-compa'];
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+      console.log(`[MCP Auto-Unregister] Successfully removed from: ${configPath}`);
+    }
+  } catch (err) {
+    console.error(`[MCP Auto-Unregister] Failed to update config at ${configPath}:`, err);
   }
 }
