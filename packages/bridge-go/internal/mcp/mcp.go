@@ -84,6 +84,7 @@ type ChoiceArgs struct {
 
 type InputArgs struct {
 	Prompt      string `json:"prompt"`
+	Question    string `json:"question"`
 	Placeholder string `json:"placeholder,omitempty"`
 }
 
@@ -398,6 +399,11 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			return
 		}
 
+		promptText := args.Prompt
+		if promptText == "" && args.Question != "" {
+			promptText = args.Question
+		}
+
 		res, err := client.RequestIntervention(ctx, connect.NewRequest(&apiv1.RequestInterventionRequest{
 			Type: "TEXT_INPUT_REQUEST",
 			Metadata: &apiv1.AgentMetadata{
@@ -406,7 +412,7 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			},
 			Payload: &apiv1.AgentPayload{
 				Title:           "Input Request",
-				Description:     args.Prompt,
+				Description:     promptText,
 				AllowsTextInput: true,
 				Placeholder:     args.Placeholder,
 			},
@@ -416,7 +422,7 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			if strings.Contains(err.Error(), "no companion device connected") {
 				sendResponse(id, CallToolResult{
 					Content: []ContentBlock{
-						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat (or using native IDE input/dialog APIs if available) for: " + args.Prompt},
+						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat (or using native IDE input/dialog APIs if available) for: " + promptText},
 					},
 					IsError: false,
 				})
