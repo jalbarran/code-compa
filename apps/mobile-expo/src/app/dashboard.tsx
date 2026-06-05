@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, Pressable } from 'react-native';
 import {
   YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Sheet
 } from 'tamagui';
@@ -29,6 +29,7 @@ export default function DashboardScreen() {
   };
 
   const openHistoryDetail = (entry: HistoryEntry) => {
+    console.log('[DEBUG] Tapped history item:', entry.event.eventId, 'Title:', entry.event.payload?.title);
     setSelectedHistoryEntry(entry);
     setSheetOpen(true);
   };
