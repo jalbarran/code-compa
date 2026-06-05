@@ -92,3 +92,16 @@ This is equivalent to running `buf generate` and must be executed before any imp
 ```
 proto/codecompa/v1/companion.proto
 ```
+
+---
+
+## 5. Human-In-The-Loop (HITL) & MCP Usage
+
+When you are acting as an AI assistant in this workspace, you must prioritize using the custom `code-compa` MCP server tools instead of asking the user questions or confirming choices directly in the chat panel.
+
+- **Priority**: Always use MCP tools for user interactions when they are available. Do not ask for confirmation or choice via plain text chat if an MCP tool can perform it.
+- **MCP Tools**:
+  - `ask_human_confirmation`: Use for yes/no or confirmation dialogs.
+  - `ask_human_choice`: Use when presenting multiple options for selection.
+  - `ask_human_input`: Use when open-ended user text input is needed.
+

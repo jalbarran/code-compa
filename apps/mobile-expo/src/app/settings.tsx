@@ -8,7 +8,14 @@ import { useConnectionStore, UserTheme, UserLanguage } from '../store/useConnect
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { userTheme, userLanguage, soundAlertsEnabled, setTheme, setLanguage, setSoundAlertsEnabled } = useConnectionStore();
+  const {
+    userTheme,
+    userLanguage,
+    hapticsEnabled,
+    setTheme,
+    setLanguage,
+    setHapticsEnabled,
+  } = useConnectionStore();
 
   const THEME_OPTIONS: { key: UserTheme; label: string }[] = [
     { key: 'system', label: t('settings.themeSystem') },
@@ -87,18 +94,18 @@ export default function SettingsScreen() {
 
         <Separator />
 
-        {/* Sound Alerts Section */}
+        {/* Haptic Feedback Section */}
         <Card borderWidth={1} p="$4">
           <XStack jc="space-between" ai="center" gap="$3">
             <YStack f={1} gap="$1">
-              <Text fow="bold" fos="$4" col="$color">{t('settings.soundSection')}</Text>
-              <Text fos="$2" col="$colorMuted">{t('settings.soundDescription')}</Text>
+              <Text fow="bold" fos="$4" col="$color">{t('settings.hapticsSection')}</Text>
+              <Text fos="$2" col="$colorMuted">{t('settings.hapticsDescription')}</Text>
             </YStack>
             <Switch
-              value={soundAlertsEnabled}
-              onValueChange={setSoundAlertsEnabled}
+              value={hapticsEnabled}
+              onValueChange={setHapticsEnabled}
               trackColor={{ false: '#767577', true: '#6366f1' }}
-              thumbColor={soundAlertsEnabled ? '#ffffff' : '#f4f3f4'}
+              thumbColor={hapticsEnabled ? '#ffffff' : '#f4f3f4'}
             />
           </XStack>
         </Card>

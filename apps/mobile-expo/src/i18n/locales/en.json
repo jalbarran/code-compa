@@ -54,9 +54,8 @@
     "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "soundSection": "Sound Alerts",
-    "soundDescription": "Play a chime when a new intervention request arrives.",
-    "soundToggleLabel": "Enable Sound Alerts"
+    "hapticsSection": "Haptic Feedback",
+    "hapticsDescription": "Vibrate the device when a new intervention request arrives."
   },
   "historyDetail": {
     "title": "Event Details",

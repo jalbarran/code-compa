@@ -3,7 +3,16 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import { createClient } from '@connectrpc/connect';
 import { CompanionService } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_connect';
 import { AgentEvent } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_pb';
-import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
+
+async function triggerHapticNotification() {
+  try {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  } catch (e) {
+    // Ignore haptic errors on unsupported platforms/devices
+  }
+}
+
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR';
 export type UserTheme = 'system' | 'light' | 'dark';
@@ -29,7 +38,7 @@ interface ConnectionState {
   // User preferences
   userTheme: UserTheme;
   userLanguage: UserLanguage;
-  soundAlertsEnabled: boolean;
+  hapticsEnabled: boolean;
 
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
@@ -38,27 +47,10 @@ interface ConnectionState {
   // Preferences actions
   setTheme: (theme: UserTheme) => void;
   setLanguage: (lang: UserLanguage) => void;
-  setSoundAlertsEnabled: (enabled: boolean) => void;
+  setHapticsEnabled: (enabled: boolean) => void;
 }
 
 let activeAbortController: AbortController | null = null;
-
-async function playAlertSound() {
-  try {
-    const { sound } = await Audio.Sound.createAsync(
-      require('../../assets/sounds/notification.wav')
-    );
-    await sound.playAsync();
-    // Release sound after playback to avoid memory leaks
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync();
-      }
-    });
-  } catch (err) {
-    console.warn('Failed to play alert sound:', err);
-  }
-}
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   ip: null,
@@ -73,11 +65,11 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   // Preference defaults
   userTheme: 'system',
   userLanguage: 'en',
-  soundAlertsEnabled: true,
+  hapticsEnabled: true,
 
   setTheme: (theme) => set({ userTheme: theme }),
   setLanguage: (lang) => set({ userLanguage: lang }),
-  setSoundAlertsEnabled: (enabled) => set({ soundAlertsEnabled: enabled }),
+  setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
 
   connect: async (ip, port, token) => {
     if (activeAbortController) {
@@ -119,9 +111,9 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
                 if (state.queue.some((e) => e.eventId === event.eventId)) {
                   return state;
                 }
-                // Trigger audio alert for blocking events
-                if (state.soundAlertsEnabled) {
-                  playAlertSound();
+                // Trigger alerts
+                if (state.hapticsEnabled) {
+                  triggerHapticNotification();
                 }
                 return { queue: [event, ...state.queue] };
               }
