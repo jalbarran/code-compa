@@ -52,6 +52,11 @@ jobs:
       run: |
         cd plugins/vscode-extension
         npm ci
+        # Replace the local workspace symlink with a physical copy to prevent vsce duplicate packaging issues
+        rm -rf node_modules/code-compa-proto-ts
+        mkdir -p node_modules/code-compa-proto-ts
+        cp -R ../../packages/proto-ts/* node_modules/code-compa-proto-ts/
+        rm -rf node_modules/code-compa-proto-ts/node_modules
         npm run compile
 
     - name: Package VS Code Extension (VSIX)
