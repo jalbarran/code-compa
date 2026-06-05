@@ -538,9 +538,17 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		if exitCode != 0 {
 			statusText = fmt.Sprintf("Failed with exit code: %d", exitCode)
 		}
+		var outputStr string
+		if stderrBuf.Len() > 0 {
+			outputStr = stdoutBuf.String() + "\n" + stderrBuf.String()
+		} else {
+			outputStr = stdoutBuf.String()
+		}
+
 		payloadJsonEnd, _ := json.Marshal(map[string]interface{}{
-			"command":   args.Command,
-			"directory": args.Directory,
+			"command":        args.Command,
+			"directory":      args.Directory,
+			"command_output": outputStr,
 		})
 		_, _ = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
 			Type: "TERMINAL_COMMAND_ENDED",

@@ -364,6 +364,15 @@ export default function DashboardScreen() {
                           {log.payload.command}
                         </Text>
                       )}
+                      {log.payload?.commandOutput ? (
+                        <ScrollView style={{ maxHeight: 120, marginTop: 8 }} nestedScrollEnabled>
+                          <YStack bg="$background" p="$2" br="$2">
+                            <Text fos="$1" col="$color" ff="$mono">
+                              {log.payload.commandOutput}
+                            </Text>
+                          </YStack>
+                        </ScrollView>
+                      ) : null}
                     </YStack>
                   </XStack>
                 </Card>
