@@ -6,10 +6,12 @@ import {
 import { useRouter } from 'expo-router';
 import { useConnectionStore, HistoryEntry } from '../store/useConnectionStore';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { ip, port, status, queue, history, telemetryLogs, disconnect, respond } = useConnectionStore();
   const [feedback, setFeedback] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -57,7 +59,14 @@ export default function DashboardScreen() {
   const currentEvent = queue[0];
 
   return (
-    <YStack f={1} bg="$background" p="$4" pt="$8">
+    <YStack 
+      f={1} 
+      bg="$background" 
+      paddingTop={insets.top + 16} 
+      paddingBottom={insets.bottom + 16}
+      paddingLeft={insets.left + 16}
+      paddingRight={insets.right + 16}
+    >
       {/* Header section */}
       <XStack jc="space-between" ai="center" mb="$4">
         <YStack>
@@ -212,8 +221,19 @@ export default function DashboardScreen() {
                         theme={opt.id.toLowerCase().includes('approve') || opt.id.toLowerCase().includes('yes') ? 'active' : undefined}
                         disabled={submittingId !== null}
                         onPress={() => handleAction(currentEvent.eventId, opt.id)}
+                        height="auto"
+                        py="$3"
+                        px="$4"
+                        jc="flex-start"
+                        ai="center"
                       >
-                        {submittingId === currentEvent.eventId ? <Spinner /> : opt.label}
+                        {submittingId === currentEvent.eventId ? (
+                          <Spinner />
+                        ) : (
+                          <Text col="$color" fos="$3" f={1} style={{ flexWrap: 'wrap' }}>
+                            {opt.label}
+                          </Text>
+                        )}
                       </Button>
                     ))
                   ) : (
