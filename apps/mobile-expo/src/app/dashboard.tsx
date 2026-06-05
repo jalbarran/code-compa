@@ -29,7 +29,7 @@ export default function DashboardScreen() {
   };
 
   const openHistoryDetail = (entry: HistoryEntry) => {
-    console.log('[DEBUG] Tapped history item:', entry.event.eventId, 'Title:', entry.event.payload?.title);
+
     setSelectedHistoryEntry(entry);
     setSheetOpen(true);
   };
@@ -60,10 +60,10 @@ export default function DashboardScreen() {
   const currentEvent = queue[0];
 
   return (
-    <YStack 
-      f={1} 
-      bg="$background" 
-      paddingTop={insets.top + 16} 
+    <YStack
+      f={1}
+      bg="$background"
+      paddingTop={insets.top + 16}
       paddingBottom={insets.bottom + 16}
       paddingLeft={insets.left + 16}
       paddingRight={insets.right + 16}

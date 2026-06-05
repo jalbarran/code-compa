@@ -4,6 +4,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { YStack, XStack, Text, Button, Input, Card, Spinner, Theme } from 'tamagui';
 import { useConnectionStore } from '../store/useConnectionStore';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ScanScreenProps {
   onScanSuccess?: () => void;
@@ -11,6 +13,8 @@ interface ScanScreenProps {
 
 export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
   const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [manualMode, setManualMode] = useState(false);
   const [ip, setIp] = useState('192.168.0.');
@@ -68,8 +72,28 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
   }
 
   return (
-    <YStack f={1} bg="$background" jc="center" p="$4">
-      {manualMode ? (
+    <YStack 
+      f={1} 
+      bg="$background" 
+      paddingTop={insets.top > 0 ? insets.top : 16} 
+      paddingBottom={insets.bottom > 0 ? insets.bottom : 16}
+      paddingLeft={insets.left + 16}
+      paddingRight={insets.right + 16}
+    >
+      {/* Top Header Section */}
+      <XStack jc="space-between" ai="center" mb="$4">
+        <Text fos="$5" fow="bold" col="$color">Code Compa</Text>
+        <Button
+          size="$3"
+          variant="outlined"
+          onPress={() => router.push('/settings')}
+        >
+          ⚙️
+        </Button>
+      </XStack>
+
+      <YStack f={1} jc="center">
+        {manualMode ? (
         <Card elevation="$4" size="$4" borderWidth={1} p="$4" gap="$4" theme="dark">
           <Card.Header>
             <Text fow="bold" fos="$6">{t('scan.connectManually')}</Text>
@@ -139,6 +163,7 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
           </YStack>
         </YStack>
       )}
+      </YStack>
     </YStack>
   );
 }
