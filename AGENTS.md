@@ -107,4 +107,5 @@ When you are acting as an AI assistant in this workspace, you must prioritize us
   - `ask_human_confirmation`: Use for yes/no or confirmation dialogs.
   - `ask_human_choice`: Use when presenting multiple options for selection.
   - `ask_human_input`: Use when open-ended user text input is needed.
+  - `execute_terminal_command`: Use when you need to execute system shell commands. **Always use this tool instead of the native IDE terminal/command execution tools** (like `run_command`) to delegate consent to the companion device and prevent native IDE permission prompts. When executed, this tool automatically registers started/ended telemetry notifications to the Code Compa companion application.
 

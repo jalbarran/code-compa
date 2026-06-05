@@ -492,6 +492,22 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			return
 		}
 
+		// Dispatch started telemetry event
+		payloadJsonStart, _ := json.Marshal(map[string]interface{}{
+			"command":   args.Command,
+			"directory": args.Directory,
+		})
+		_, _ = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
+			Type: "TERMINAL_COMMAND_STARTED",
+			Metadata: &apiv1.AgentMetadata{
+				Ide:       "VS Code",
+				AgentName: "MCP-Server-Go",
+			},
+			Title:       "Command Execution Started",
+			Description: fmt.Sprintf("Running: %s", args.Command),
+			PayloadJson: string(payloadJsonStart),
+		}))
+
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
 			cmd = exec.Command("cmd", "/c", args.Command)
@@ -516,6 +532,26 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 				exitCode = -1
 			}
 		}
+
+		// Dispatch ended telemetry event
+		statusText := "Completed successfully"
+		if exitCode != 0 {
+			statusText = fmt.Sprintf("Failed with exit code: %d", exitCode)
+		}
+		payloadJsonEnd, _ := json.Marshal(map[string]interface{}{
+			"command":   args.Command,
+			"directory": args.Directory,
+		})
+		_, _ = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
+			Type: "TERMINAL_COMMAND_ENDED",
+			Metadata: &apiv1.AgentMetadata{
+				Ide:       "VS Code",
+				AgentName: "MCP-Server-Go",
+			},
+			Title:       "Command Execution Finished",
+			Description: fmt.Sprintf("Finished: %s (%s)", args.Command, statusText),
+			PayloadJson: string(payloadJsonEnd),
+		}))
 
 		resultPayload, _ := json.Marshal(ExecuteCommandResult{
 			Stdout:   stdoutBuf.String(),
