@@ -87,15 +87,16 @@ jobs:
 
     - name: Build VS Code Extension
       run: |
-        cd plugins/vscode-extension
+        # Pack the local dependency to a .tgz archive
+        cd packages/proto-ts
+        npm pack
+        
+        # Install vscode-extension dependencies first
+        cd ../../plugins/vscode-extension
         npm ci
-        # Replace the local workspace symlink with a physical copy to prevent vsce duplicate packaging issues
-        rm -rf node_modules/code-compa-proto-ts
-        mkdir -p node_modules/code-compa-proto-ts
-        cp -R ../../packages/proto-ts/* node_modules/code-compa-proto-ts/
-        rm -rf node_modules/code-compa-proto-ts/node_modules
-        # Strip dependencies from nested package.json so npm list doesn't report ELSPROBLEMS during vsce packaging
-        node -e "const p = require('./node_modules/code-compa-proto-ts/package.json'); delete p.dependencies; require('fs').writeFileSync('./node_modules/code-compa-proto-ts/package.json', JSON.stringify(p, null, 2))"
+        
+        # Replace the symlink with the physical package from the .tgz to prevent vsce/npm duplicate and invalid errors
+        npm install --no-save ../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz
         npm run compile
 
     - name: Package VS Code Extension (VSIX)
