@@ -203,12 +203,12 @@ export default function DashboardScreen() {
               )}
 
               <Card.Footer mt="$4">
-                <XStack f={1} gap="$2">
+                <YStack w="100%" gap="$2">
                   {currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
                     currentEvent.payload.options.map((opt) => (
                       <Button
                         key={opt.id}
-                        f={1}
+                        w="100%"
                         theme={opt.id.toLowerCase().includes('approve') || opt.id.toLowerCase().includes('yes') ? 'active' : undefined}
                         disabled={submittingId !== null}
                         onPress={() => handleAction(currentEvent.eventId, opt.id)}
@@ -219,7 +219,7 @@ export default function DashboardScreen() {
                   ) : (
                     <>
                       <Button
-                        f={1}
+                        w="100%"
                         variant="outlined"
                         theme="alt1"
                         disabled={submittingId !== null}
@@ -228,7 +228,7 @@ export default function DashboardScreen() {
                         {t('dashboard.reject')}
                       </Button>
                       <Button
-                        f={1}
+                        w="100%"
                         theme="active"
                         disabled={submittingId !== null}
                         onPress={() => handleAction(currentEvent.eventId, 'APPROVE')}
@@ -237,7 +237,7 @@ export default function DashboardScreen() {
                       </Button>
                     </>
                   )}
-                </XStack>
+                </YStack>
               </Card.Footer>
             </Card>
 
