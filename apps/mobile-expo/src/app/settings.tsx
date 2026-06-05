@@ -1,12 +1,15 @@
 import React from 'react';
-import { Switch } from 'react-native';
+import { Switch, Image } from 'react-native';
+const logoImg = require('../../assets/images/icon.png');
 import { YStack, XStack, Text, Button, Separator, Card } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useConnectionStore, UserTheme, UserLanguage } from '../store/useConnectionStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     userTheme,
@@ -29,7 +32,11 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <YStack f={1} bg="$background" p="$4" pt="$10">
+    <YStack f={1} bg="$background" p="$4" pt="$10"
+      paddingTop={insets.top + 16}
+      paddingBottom={insets.bottom + 16}
+      paddingLeft={insets.left + 16}
+      paddingRight={insets.right + 16}>
       {/* Header */}
       <XStack ai="center" mb="$6" gap="$3">
         <Button
@@ -40,6 +47,11 @@ export default function SettingsScreen() {
         >
           {'←'}
         </Button>
+        <Image
+          source={logoImg}
+          style={{ width: 32, height: 32, borderRadius: 6 }}
+          resizeMode="contain"
+        />
         <Text fos="$6" fow="bold" col="$color">
           {t('settings.title')}
         </Text>

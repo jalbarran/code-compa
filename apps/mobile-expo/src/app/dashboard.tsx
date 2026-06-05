@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, Pressable } from 'react-native';
+import { ScrollView, Pressable, Image } from 'react-native';
+const logoImg = require('../../assets/images/icon.png');
 import {
   YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Sheet
 } from 'tamagui';
@@ -70,26 +71,21 @@ export default function DashboardScreen() {
     >
       {/* Header section */}
       <XStack jc="space-between" ai="center" mb="$4">
-        <YStack>
-          <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
-          <XStack ai="center" gap="$2">
-            <Circle size={10} bg={getStatusColor()} />
-            <Text col="$colorMuted" fos="$2">
-              {status} • {ip}:{port}
-            </Text>
-          </XStack>
-        </YStack>
-        <XStack gap="$2">
-          <Button
-            size="$3"
-            variant="outlined"
-            onPress={() => router.push('/settings')}
-          >
-            {'⚙️'}
-          </Button>
-          <Button size="$3" variant="outlined" onPress={disconnect}>
-            {t('dashboard.disconnect')}
-          </Button>
+        <XStack ai="center" gap="$3">
+          <Image
+            source={logoImg}
+            style={{ width: 42, height: 42, borderRadius: 8 }}
+            resizeMode="contain"
+          />
+          <YStack>
+            <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
+            <XStack ai="center" gap="$2">
+              <Circle size={10} bg={getStatusColor()} />
+              <Text col="$colorMuted" fos="$2">
+                {status} • {ip}:{port}
+              </Text>
+            </XStack>
+          </YStack>
         </XStack>
       </XStack>
 
@@ -197,7 +193,7 @@ export default function DashboardScreen() {
                 )}
               </YStack>
 
-               {currentEvent.payload?.allowsTextInput && (
+              {currentEvent.payload?.allowsTextInput && (
                 <YStack gap="$2" my="$2">
                   <Text fos="$3" fow="bold">{t('dashboard.customInstructions')}</Text>
                   <Input
@@ -381,6 +377,21 @@ export default function DashboardScreen() {
           </YStack>
         )}
       </ScrollView>
+
+      {/* Footer controls */}
+      <XStack gap="$2" mt="$2" pt="$3" borderTopWidth={1} borderTopColor="$borderColor">
+        <Button
+          size="$3"
+          variant="outlined"
+          onPress={() => router.push('/settings')}
+          f={1}
+        >
+          {'⚙️ ' + t('dashboard.settingsButton')}
+        </Button>
+        <Button size="$3" variant="outlined" onPress={disconnect} f={1} theme="alt2">
+          {'🔌 ' + t('dashboard.disconnect')}
+        </Button>
+      </XStack>
 
       {/* Session History Detail Sheet */}
       <Sheet
