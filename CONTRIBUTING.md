@@ -60,3 +60,15 @@ Compile the whole project:
 make all
 ```
 Ensure all files compile without syntax or compiler errors.
+
+---
+
+## 📦 Versioning & Releases
+
+We use **Changesets** to manage package versioning and release logs. 
+
+**Every single change** (feature, bug fix, refactor) must be tagged with a changeset before merging. Run the following command at the repository root and follow the interactive prompts to describe your change and specify the affected packages:
+
+```bash
+npm run changeset
+```

@@ -1,0 +1,15 @@
+{
+  "name": "code-compa-root",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1"
+  }
+}

@@ -41,6 +41,7 @@ Before writing *any* implementation code, you must ensure a specification docume
 - **NEVER commit compiled binaries** (such as Go executables or built `.vsix` packages) to Git.
 - Verify that compiled targets are ignored in `.gitignore`.
 - Place any temporary scripts or local test tools under a `scratch/` directory (if temporary) and do not commit them.
+- **Changesets Tagging**: Every pull request/change to package code must include a changeset tag. You must generate a changeset using `npm run changeset` (or write one under `.changeset/`) when modifying packages.
 
 ---
 
