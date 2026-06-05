@@ -1,10 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <rect x="0" y="0" width="24" height="24" fill="none"/>
-  <!-- Phone Outer Frame -->
-  <rect x="6" y="2" width="12" height="20" rx="2" fill="none" stroke="#2563EB" stroke-width="2"/>
-  <!-- Screen top notch / speaker -->
-  <line x1="10" y1="4" x2="14" y2="4" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
-  <!-- Connected Signal Nodes -->
-  <circle cx="12" cy="12" r="3" fill="none" stroke="#10B981" stroke-width="1.5"/>
-  <circle cx="12" cy="12" r="0.75" fill="#10B981"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Monitor outline (IDE) -->
+  <path d="M12 18H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
+  <path d="M6 21h6" />
+  <path d="M9 18v3" />
+  
+  <!-- AI Sparkle Stars inside monitor screen -->
+  <!-- Large Star -->
+  <path d="M 7 4 L 8.2 7.8 L 12 9 L 8.2 10.2 L 7 14 L 5.8 10.2 L 2 9 L 5.8 7.8 Z" fill="currentColor" stroke="none" />
+  <!-- Small Star -->
+  <path d="M 12 2 L 12.8 4.2 L 15 5 L 12.8 5.8 L 12 8 L 11.2 5.8 L 9 5 L 11.2 4.2 Z" fill="currentColor" stroke="none" />
+  
+  <!-- Mobile phone outline (Companion App) -->
+  <rect x="15" y="11" width="7" height="11" rx="1.5" />
+  <circle cx="18.5" cy="19.5" r="0.5" fill="currentColor" />
+  <line x1="17.5" y1="13" x2="19.5" y2="13" />
 </svg>

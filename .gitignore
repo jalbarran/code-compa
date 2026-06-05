@@ -50,3 +50,6 @@ npm-debug.log*
 [Dd]esktop.ini
 $RECYCLE.BIN/
 *.db
+
+# Temporary scratch directory
+scratch/
