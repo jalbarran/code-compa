@@ -164,7 +164,7 @@ func handleRequest(client apiv1connect.CompanionServiceClient, req *JsonRpcReque
 		tools := []Tool{
 			{
 				Name:        "ask_human_confirmation",
-				Description: "Request a binary (Approve/Reject) confirmation from the human developer via their mobile companion app. Use for terminal command execution approvals or file edits.",
+				Description: "Request a binary (Approve/Reject) confirmation from the human developer via their mobile companion app. Use for terminal command execution approvals or file edits. IMPORTANT: Before calling this tool, you MUST output a brief text message in the chat explaining to the developer that they need to approve/confirm this action in their Code Compa companion app.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -183,7 +183,7 @@ func handleRequest(client apiv1connect.CompanionServiceClient, req *JsonRpcReque
 			},
 			{
 				Name:        "ask_human_choice",
-				Description: "Present a multiple-choice selection to the developer on their mobile companion app and wait for their choice.",
+				Description: "Present a multiple-choice selection to the developer on their mobile companion app and wait for their choice. IMPORTANT: Before calling this tool, you MUST output a brief text message in the chat explaining to the developer that they need to make a choice in their Code Compa companion app.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -204,7 +204,7 @@ func handleRequest(client apiv1connect.CompanionServiceClient, req *JsonRpcReque
 			},
 			{
 				Name:        "ask_human_input",
-				Description: "Request free-form text input from the developer via their mobile companion app.",
+				Description: "Request free-form text input from the developer via their mobile companion app. IMPORTANT: Before calling this tool, you MUST output a brief text message in the chat explaining to the developer that they need to provide input in their Code Compa companion app.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
