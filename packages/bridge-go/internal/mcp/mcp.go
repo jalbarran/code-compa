@@ -14,6 +14,8 @@ import (
 	"github.com/jalbarran/code-compa/packages/bridge-go/internal/lockfile"
 	apiv1 "github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1"
 	"github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1/apiv1connect"
+	"os/exec"
+	"runtime"
 )
 
 // MCP JSON-RPC messages schema structures
@@ -77,6 +79,7 @@ type ConfirmationArgs struct {
 type ChoiceArgs struct {
 	Question string   `json:"question"`
 	Options  []string `json:"options"`
+	Choices  []string `json:"choices"`
 }
 
 type InputArgs struct {
@@ -96,6 +99,18 @@ type ChoiceResponse struct {
 
 type InputResponse struct {
 	Input string `json:"input"`
+}
+
+type ExecuteCommandArgs struct {
+	Command     string `json:"command"`
+	Directory   string `json:"directory,omitempty"`
+	Criticality string `json:"criticality,omitempty"`
+}
+
+type ExecuteCommandResult struct {
+	Stdout   string `json:"stdout"`
+	Stderr   string `json:"stderr"`
+	ExitCode int    `json:"exitCode"`
 }
 
 // StartMcpServer starts the stdio loop for Model Context Protocol
@@ -220,6 +235,29 @@ func handleRequest(client apiv1connect.CompanionServiceClient, req *JsonRpcReque
 					Required: []string{"prompt"},
 				},
 			},
+			{
+				Name:        "execute_terminal_command",
+				Description: "Execute a shell command on the host computer. The user must approve the command via their Code Compa companion app before it runs. Returns stdout, stderr, and exit status. IMPORTANT: Before calling this tool, you MUST output a brief text message in the chat explaining to the developer that they need to authorize the command execution in their Code Compa companion app.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"command": map[string]string{
+							"type":        "string",
+							"description": "The command string to execute.",
+						},
+						"directory": map[string]string{
+							"type":        "string",
+							"description": "Optional working directory in which to execute the command.",
+						},
+						"criticality": map[string]interface{}{
+							"type": "string",
+							"enum": []string{"low", "medium", "high"},
+							"description": "How risky/critical the action is.",
+						},
+					},
+					Required: []string{"command"},
+				},
+			},
 		}
 		sendResponse(req.Id, ListToolsResult{Tools: tools})
 
@@ -305,8 +343,13 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			return
 		}
 
+		optionsList := args.Options
+		if len(optionsList) == 0 && len(args.Choices) > 0 {
+			optionsList = args.Choices
+		}
+
 		var opts []*apiv1.DecisionOption
-		for _, opt := range args.Options {
+		for _, opt := range optionsList {
 			opts = append(opts, &apiv1.DecisionOption{Id: opt, Label: opt})
 		}
 
@@ -365,6 +408,7 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 				Title:           "Input Request",
 				Description:     args.Prompt,
 				AllowsTextInput: true,
+				Placeholder:     args.Placeholder,
 			},
 		}))
 
@@ -389,6 +433,99 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		sendResponse(id, CallToolResult{
 			Content: []ContentBlock{
 				{Type: "text", Text: string(payload)},
+			},
+		})
+
+	case "execute_terminal_command":
+		var args ExecuteCommandArgs
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			sendError(id, -32602, "Invalid arguments: "+err.Error())
+			return
+		}
+
+		risk := args.Criticality
+		if risk == "" {
+			risk = "low"
+		}
+
+		res, err := client.RequestIntervention(ctx, connect.NewRequest(&apiv1.RequestInterventionRequest{
+			Type: "COMMAND_EXECUTION_REQUEST",
+			Metadata: &apiv1.AgentMetadata{
+				Ide:       "VS Code",
+				AgentName: "MCP-Server-Go",
+			},
+			Payload: &apiv1.AgentPayload{
+				Title:           "Execute Command",
+				Description:     fmt.Sprintf("An autonomous task requested to execute: %s", args.Command),
+				Command:         args.Command,
+				Directory:       args.Directory,
+				RiskLevel:       risk,
+				Options: []*apiv1.DecisionOption{
+					{Id: "APPROVE", Label: "Approve"},
+					{Id: "REJECT", Label: "Reject"},
+				},
+				AllowsTextInput: false,
+			},
+		}))
+
+		if err != nil {
+			if strings.Contains(err.Error(), "no companion device connected") {
+				sendResponse(id, CallToolResult{
+					Content: []ContentBlock{
+						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat to execute this command: " + args.Command},
+					},
+					IsError: false,
+				})
+				return
+			}
+			sendToolError(id, fmt.Sprintf("Failed to request command execution approval: %v", err))
+			return
+		}
+
+		if res.Msg.SelectedOptionId != "APPROVE" {
+			sendResponse(id, CallToolResult{
+				Content: []ContentBlock{
+					{Type: "text", Text: fmt.Sprintf("Command execution rejected by user: %s", res.Msg.FeedbackText)},
+				},
+				IsError: true,
+			})
+			return
+		}
+
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/c", args.Command)
+		} else {
+			cmd = exec.Command("sh", "-c", args.Command)
+		}
+
+		if args.Directory != "" {
+			cmd.Dir = args.Directory
+		}
+
+		var stdoutBuf, stderrBuf strings.Builder
+		cmd.Stdout = &stdoutBuf
+		cmd.Stderr = &stderrBuf
+
+		err = cmd.Run()
+		exitCode := 0
+		if err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				exitCode = exitError.ExitCode()
+			} else {
+				exitCode = -1
+			}
+		}
+
+		resultPayload, _ := json.Marshal(ExecuteCommandResult{
+			Stdout:   stdoutBuf.String(),
+			Stderr:   stderrBuf.String(),
+			ExitCode: exitCode,
+		})
+
+		sendResponse(id, CallToolResult{
+			Content: []ContentBlock{
+				{Type: "text", Text: string(resultPayload)},
 			},
 		})
 

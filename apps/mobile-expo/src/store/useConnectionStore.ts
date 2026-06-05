@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { createClient } from '@connectrpc/connect';
-import { CompanionService } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_connect';
-import { AgentEvent } from '../../../../packages/proto-ts/src/proto/codecompa/v1/companion_pb';
+import { CompanionService } from 'code-compa-proto-ts/src/proto/codecompa/v1/companion_connect';
+import { AgentEvent } from 'code-compa-proto-ts/src/proto/codecompa/v1/companion_pb';
 import * as Haptics from 'expo-haptics';
 
 async function triggerHapticNotification() {

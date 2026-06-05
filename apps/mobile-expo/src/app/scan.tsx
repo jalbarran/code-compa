@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { YStack, XStack, Text, Button, Input, Card, Spinner, Theme } from 'tamagui';
 import { useConnectionStore } from '../store/useConnectionStore';
@@ -16,7 +16,8 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
-  const [manualMode, setManualMode] = useState(false);
+  const isWeb = Platform.OS === 'web';
+  const [manualMode, setManualMode] = useState(isWeb);
   const [ip, setIp] = useState('192.168.0.');
   const [port, setPort] = useState('8765');
   const [token, setToken] = useState(__DEV__ ? 'XXX' : '');
@@ -51,7 +52,7 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
     }
   };
 
-  if (!permission) {
+  if (!isWeb && !permission) {
     return (
       <YStack f={1} ai="center" jc="center" bg="$background" p="$4">
         <Spinner size="large" color="$color" />
@@ -60,7 +61,7 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
     );
   }
 
-  if (!permission.granted && !manualMode) {
+  if (!isWeb && permission && !permission.granted && !manualMode) {
     return (
       <YStack f={1} ai="center" jc="center" bg="$background" p="$4" gap="$4">
         <Text ta="center" fow="bold" fos="$5" col="$color">{t('scan.permissionRequired')}</Text>
@@ -122,9 +123,11 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
           </YStack>
 
           <Card.Footer gap="$2">
-            <Button f={1} variant="outlined" onPress={() => setManualMode(false)}>
-              {t('scan.useScanner')}
-            </Button>
+            {!isWeb && (
+              <Button f={1} variant="outlined" onPress={() => setManualMode(false)}>
+                {t('scan.useScanner')}
+              </Button>
+            )}
             <Button f={1} theme="active" onPress={() => handleConnect(ip, Number(port), token)} disabled={isConnecting}>
               {isConnecting ? <Spinner color="white" /> : t('scan.connect')}
             </Button>

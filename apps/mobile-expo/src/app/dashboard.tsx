@@ -197,13 +197,13 @@ export default function DashboardScreen() {
                 )}
               </YStack>
 
-              {currentEvent.payload?.allowsTextInput && (
+               {currentEvent.payload?.allowsTextInput && (
                 <YStack gap="$2" my="$2">
                   <Text fos="$3" fow="bold">{t('dashboard.customInstructions')}</Text>
                   <Input
                     value={feedback}
                     onChangeText={setFeedback}
-                    placeholder={t('dashboard.feedbackPlaceholder')}
+                    placeholder={currentEvent.payload?.placeholder || t('dashboard.feedbackPlaceholder')}
                     placeholderTextColor="$gray9"
                     multiline
                     numberOfLines={4}
@@ -214,7 +214,16 @@ export default function DashboardScreen() {
 
               <Card.Footer mt="$4">
                 <YStack w="100%" gap="$2">
-                  {currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
+                  {currentEvent.payload?.allowsTextInput ? (
+                    <Button
+                      w="100%"
+                      theme="active"
+                      disabled={submittingId !== null}
+                      onPress={() => handleAction(currentEvent.eventId, 'SUBMIT')}
+                    >
+                      {submittingId === currentEvent.eventId ? <Spinner color="white" /> : t('dashboard.submit')}
+                    </Button>
+                  ) : currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
                     currentEvent.payload.options.map((opt) => (
                       <Button
                         key={opt.id}

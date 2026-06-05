@@ -45,6 +45,7 @@ message AgentPayload {
   // Enriched fields for Phase 3
   string diff = 8;        // Optional: Unified Git diff format
   string prompt = 9;      // Optional: Prompt or system instruction block
+  string placeholder = 10; // Optional: Dynamic placeholder for text inputs
 }
 
 message DecisionOption {

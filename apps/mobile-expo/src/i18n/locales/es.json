@@ -32,6 +32,7 @@
     "feedbackPlaceholder": "Proporcione corrección o instrucciones opcionales...",
     "reject": "Rechazar",
     "approve": "Aprobar",
+    "submit": "Enviar",
     "pendingQueue": "Cola de Pendientes ({{count}} más)",
     "allClear": "Todo Despejado",
     "autonomousDescription": "El agente se está ejecutando de forma autónoma en su IDE. Las solicitudes de intervención pendientes se transmitirán aquí.",

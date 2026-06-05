@@ -26,14 +26,16 @@ import (
 )
 
 type OutputConfig struct {
-	Port   int    `json:"port"`
-	Token  string `json:"token"`
-	Status string `json:"status"`
+	Port       int    `json:"port"`
+	Token      string `json:"token"`
+	Status     string `json:"status"`
+	WebEnabled bool   `json:"webEnabled"`
 }
 
 func main() {
 	workspacePath := flag.String("workspace-path", "", "Path to the active workspace")
 	mcpMode := flag.Bool("mcp", false, "Start in MCP (Model Context Protocol) server mode")
+	webDir := flag.String("web-dir", "", "Path to the pre-built Expo Web directory")
 	flag.Parse()
 
 	if *mcpMode {
@@ -116,6 +118,14 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
 
+	webEnabled := false
+	if *webDir != "" {
+		if fi, err := os.Stat(*webDir); err == nil && fi.IsDir() {
+			webEnabled = true
+			mux.Handle("/", http.FileServer(http.Dir(*webDir)))
+		}
+	}
+
 	// Use h2c so we can support HTTP/2 without TLS
 	srv := &http.Server{
 		Addr:    listener.Addr().String(),
@@ -138,9 +148,10 @@ func main() {
 
 	// 7. Output dynamic config to stdout
 	config := OutputConfig{
-		Port:   port,
-		Token:  token,
-		Status: "READY",
+		Port:       port,
+		Token:      token,
+		Status:     "READY",
+		WebEnabled: webEnabled,
 	}
 	output, _ := json.Marshal(config)
 	fmt.Println(string(output))

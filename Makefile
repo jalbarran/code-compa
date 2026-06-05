@@ -1,4 +1,4 @@
-.PHONY: proto build-bridge test-go test-i18n tidy-go install-extension build-extension all
+.PHONY: proto build-bridge test-go test-i18n tidy-go install-extension build-extension build-web all
 
 proto:
 	buf generate
@@ -21,5 +21,11 @@ install-extension:
 build-extension:
 	npm --prefix plugins/vscode-extension run compile
 
-all: proto build-bridge build-extension
+build-web:
+	rm -rf plugins/vscode-extension/bin/web
+	cd apps/mobile-expo && npx expo export --platform web --clear
+	mkdir -p plugins/vscode-extension/bin/web
+	cp -R apps/mobile-expo/dist/* plugins/vscode-extension/bin/web/
+
+all: proto build-bridge build-extension build-web
 

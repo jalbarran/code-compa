@@ -34,6 +34,7 @@ go.work.sum
 # IDE plugin executables
 plugins/vscode-extension/bin/*
 !plugins/vscode-extension/bin/.gitkeep
+plugins/vscode-extension/bin/web/
 packages/bridge-go/bridge
 
 # Node.js & NPM dependencies
