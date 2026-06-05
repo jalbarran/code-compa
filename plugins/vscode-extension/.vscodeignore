@@ -2,8 +2,6 @@
 .vscodeignore
 tsconfig.json
 src/**
-node_modules/code-compa-proto-ts/node_modules/**
-node_modules/**/*.map
-node_modules/**/*.ts
+node_modules/**
 **/*.map
 **/*.ts

@@ -91,18 +91,19 @@ jobs:
         cd packages/proto-ts
         npm pack
         
-        # Install vscode-extension dependencies first
+        # Modify package.json to point to the .tgz package directly
         cd ../../plugins/vscode-extension
-        npm ci
+        node -e "const p = require('./package.json'); p.dependencies['code-compa-proto-ts'] = 'file:../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz'; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2))"
         
-        # Replace the symlink with the physical package from the .tgz to prevent vsce/npm duplicate and invalid errors
-        npm install --no-save ../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz
+        # Install vscode-extension dependencies physically
+        npm install
         npm run compile
 
     - name: Package VS Code Extension (VSIX)
       run: |
         cd plugins/vscode-extension
-        npx @vscode/vsce package --allow-missing-repository
+        cp ../../LICENSE ./
+        npx @vscode/vsce package --no-dependencies --allow-missing-repository
 
     - name: Upload VSIX Artifact
       uses: actions/upload-artifact@v4

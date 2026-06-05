@@ -52,3 +52,8 @@ $RECYCLE.BIN/
 
 # Temporary scratch directory
 scratch/
+
+# Package artifacts and VSIX outputs
+*.tgz
+*.vsix
+plugins/vscode-extension/web/

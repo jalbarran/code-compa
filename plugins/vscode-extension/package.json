@@ -50,7 +50,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npx esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts"
@@ -59,13 +59,14 @@
     "@bufbuild/protobuf": "^1.8.0",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-node": "^1.7.0",
-    "code-compa-proto-ts": "file:../../packages/proto-ts",
+    "code-compa-proto-ts": "file:../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^18.x",
     "@types/qrcode": "^1.5.6",
     "@types/vscode": "^1.80.0",
+    "esbuild": "^0.20.1",
     "typescript": "^5.1.3"
   }
 }
