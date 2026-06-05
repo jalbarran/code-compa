@@ -16,10 +16,11 @@ import (
 )
 
 type CompanionServer struct {
-	token      string
-	eventsChan chan *v1.AgentEvent
-	mu         sync.Mutex
-	responses  map[string]chan *v1.RespondToInterventionRequest
+	token         string
+	eventsChan    chan *v1.AgentEvent
+	mu            sync.Mutex
+	responses     map[string]chan *v1.RespondToInterventionRequest
+	activeStreams int
 }
 
 func NewCompanionServer(token string) *CompanionServer {
@@ -35,6 +36,16 @@ func (s *CompanionServer) StreamAgentEvents(
 	req *connect.Request[v1.StreamAgentEventsRequest],
 	stream *connect.ServerStream[v1.AgentEvent],
 ) error {
+	s.mu.Lock()
+	s.activeStreams++
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		s.activeStreams--
+		s.mu.Unlock()
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -78,6 +89,14 @@ func (s *CompanionServer) RequestIntervention(
 	ctx context.Context,
 	req *connect.Request[v1.RequestInterventionRequest],
 ) (*connect.Response[v1.RequestInterventionResponse], error) {
+	s.mu.Lock()
+	streams := s.activeStreams
+	s.mu.Unlock()
+
+	if streams == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no companion device connected"))
+	}
+
 	eventID := "evt-" + uuid.New().String()[:8]
 	event := &v1.AgentEvent{
 		EventId:  eventID,

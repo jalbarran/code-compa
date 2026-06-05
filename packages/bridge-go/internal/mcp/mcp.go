@@ -271,6 +271,15 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		}))
 
 		if err != nil {
+			if strings.Contains(err.Error(), "no companion device connected") {
+				sendResponse(id, CallToolResult{
+					Content: []ContentBlock{
+						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat (or using native IDE confirmation/dialog APIs if available) to approve/confirm: " + args.Prompt},
+					},
+					IsError: false,
+				})
+				return
+			}
 			sendToolError(id, fmt.Sprintf("Failed to request intervention: %v", err))
 			return
 		}
@@ -316,6 +325,15 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		}))
 
 		if err != nil {
+			if strings.Contains(err.Error(), "no companion device connected") {
+				sendResponse(id, CallToolResult{
+					Content: []ContentBlock{
+						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat (or using native IDE selection/dialog APIs if available) to choose between these options: [" + strings.Join(args.Options, ", ") + "] for the question: " + args.Question},
+					},
+					IsError: false,
+				})
+				return
+			}
 			sendToolError(id, fmt.Sprintf("Failed to request choice: %v", err))
 			return
 		}
@@ -351,6 +369,15 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		}))
 
 		if err != nil {
+			if strings.Contains(err.Error(), "no companion device connected") {
+				sendResponse(id, CallToolResult{
+					Content: []ContentBlock{
+						{Type: "text", Text: "No Code Compa companion device is connected. You MUST fallback to asking the developer directly in the IDE chat (or using native IDE input/dialog APIs if available) for: " + args.Prompt},
+					},
+					IsError: false,
+				})
+				return
+			}
 			sendToolError(id, fmt.Sprintf("Failed to request text input: %v", err))
 			return
 		}
