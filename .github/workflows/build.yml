@@ -95,6 +95,9 @@ jobs:
         cd ../../plugins/vscode-extension
         node -e "const p = require('./package.json'); p.dependencies['code-compa-proto-ts'] = 'file:../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz'; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2))"
         
+        # Remove package-lock.json to avoid sha512 integrity verification errors with the dynamically generated local .tgz
+        rm -f package-lock.json
+        
         # Install vscode-extension dependencies physically
         npm install
         npm run compile
