@@ -2,6 +2,8 @@
   "name": "code-compa-vscode",
   "displayName": "Code Compa",
   "description": "Decentralized remote control and monitoring for AI agents",
+  "publisher": "",
+  "icon": "media/icon.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.80.0"

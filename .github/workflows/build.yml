@@ -118,6 +118,7 @@ jobs:
       run: |
         cd plugins/vscode-extension
         cp ../../LICENSE ./
+        cp ../../README.md ./
         npx @vscode/vsce package --no-dependencies --allow-missing-repository
 
     - name: Upload VSIX Artifact
