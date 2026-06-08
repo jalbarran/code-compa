@@ -2,9 +2,13 @@
   "name": "code-compa-vscode",
   "displayName": "Code Compa",
   "description": "Decentralized remote control and monitoring for AI agents",
-  "publisher": "",
+  "publisher": "jalbarran",
   "icon": "media/icon.png",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jalbarran/code-compa.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
