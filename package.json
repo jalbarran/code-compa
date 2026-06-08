@@ -10,6 +10,7 @@
     "changeset": "changeset"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1"
+    "@changesets/cli": "^2.27.1",
+    "typescript": "^6.0.3"
   }
 }
