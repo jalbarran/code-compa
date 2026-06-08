@@ -145,6 +145,9 @@ func (s *CompanionServer) PostTelemetryEvent(
 			if risk, ok := extra["riskLevel"].(string); ok {
 				payload.RiskLevel = risk
 			}
+			if out, ok := extra["command_output"].(string); ok {
+				payload.CommandOutput = out
+			}
 		}
 	}
 

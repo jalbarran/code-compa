@@ -202,6 +202,20 @@ export class AgentPayload extends Message<AgentPayload> {
    */
   prompt = "";
 
+  /**
+   * Optional: Dynamic placeholder for text inputs
+   *
+   * @generated from field: string placeholder = 10;
+   */
+  placeholder = "";
+
+  /**
+   * Optional: Capture output of executed commands
+   *
+   * @generated from field: string command_output = 11;
+   */
+  commandOutput = "";
+
   constructor(data?: PartialMessage<AgentPayload>) {
     super();
     proto3.util.initPartial(data, this);
@@ -219,6 +233,8 @@ export class AgentPayload extends Message<AgentPayload> {
     { no: 7, name: "allows_text_input", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 8, name: "diff", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 9, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "placeholder", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "command_output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentPayload {

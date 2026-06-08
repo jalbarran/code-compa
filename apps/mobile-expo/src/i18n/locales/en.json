@@ -32,6 +32,7 @@
     "feedbackPlaceholder": "Provide optional correction or instructions...",
     "reject": "Reject",
     "approve": "Approve",
+    "submit": "Submit",
     "pendingQueue": "Pending Queue ({{count}} more)",
     "allClear": "All Clear",
     "autonomousDescription": "Agent is running autonomously in your IDE. Pending intervention requests will stream here.",

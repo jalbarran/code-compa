@@ -1,14 +1,20 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withTamagui } = require('@tamagui/metro-plugin');
 const path = require('path');
+const fs = require('fs');
 
-// Find the project and workspace directories
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '../..');
+// Find the project and workspace directories using realpath to resolve any symlinks
+const projectRoot = fs.realpathSync(__dirname);
+const workspaceRoot = fs.realpathSync(path.resolve(projectRoot, '../..'));
 
-const config = getDefaultConfig(projectRoot);
+let config = getDefaultConfig(projectRoot);
+
+const defaultResolveRequest = config.resolver.resolveRequest;
 
 // 1. Watch all files within the monorepo
 config.watchFolders = [workspaceRoot];
+
+config.resolver.platforms = ['ios', 'android', 'web', 'node', 'server'];
 
 // 2. Let Metro know where to resolve packages from
 config.resolver.nodeModulesPaths = [
@@ -24,15 +30,36 @@ config.resolver.extraNodeModules = {
 
 // 4. Resolve .js imports inside ts files back to their .ts/.tsx sources (for ESM compat)
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  let targetModuleName = moduleName;
   if (moduleName.endsWith('.js')) {
-    const withoutExtension = moduleName.slice(0, -3);
+    targetModuleName = moduleName.slice(0, -3);
+  }
+
+  if (defaultResolveRequest) {
     try {
-      return context.resolveRequest(context, withoutExtension, platform);
+      return defaultResolveRequest(context, targetModuleName, platform);
     } catch (err) {
-      // Fall back to original moduleName if it cannot be resolved without extension
+      if (targetModuleName !== moduleName) {
+        try {
+          return defaultResolveRequest(context, moduleName, platform);
+        } catch (fallbackErr) {}
+      }
     }
   }
-  return context.resolveRequest(context, moduleName, platform);
+
+  try {
+    return context.resolveRequest(context, targetModuleName, platform);
+  } catch (err) {
+    if (targetModuleName !== moduleName) {
+      return context.resolveRequest(context, moduleName, platform);
+    }
+    throw err;
+  }
 };
 
-module.exports = config;
+module.exports = withTamagui(config, {
+  components: ['tamagui'],
+  config: './tamagui.config.ts',
+  outputCSS: './tamagui.css',
+  isCSSEnabled: true,
+});

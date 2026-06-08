@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, Pressable } from 'react-native';
+import { ScrollView, Pressable, Image } from 'react-native';
+const logoImg = require('../../assets/images/icon.png');
 import {
   YStack, XStack, Text, Button, Card, Input, Separator, Spinner, Circle, Sheet
 } from 'tamagui';
@@ -70,26 +71,21 @@ export default function DashboardScreen() {
     >
       {/* Header section */}
       <XStack jc="space-between" ai="center" mb="$4">
-        <YStack>
-          <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
-          <XStack ai="center" gap="$2">
-            <Circle size={10} bg={getStatusColor()} />
-            <Text col="$colorMuted" fos="$2">
-              {status} • {ip}:{port}
-            </Text>
-          </XStack>
-        </YStack>
-        <XStack gap="$2">
-          <Button
-            size="$3"
-            variant="outlined"
-            onPress={() => router.push('/settings')}
-          >
-            {'⚙️'}
-          </Button>
-          <Button size="$3" variant="outlined" onPress={disconnect}>
-            {t('dashboard.disconnect')}
-          </Button>
+        <XStack ai="center" gap="$3">
+          <Image
+            source={logoImg}
+            style={{ width: 42, height: 42, borderRadius: 8 }}
+            resizeMode="contain"
+          />
+          <YStack>
+            <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
+            <XStack ai="center" gap="$2">
+              <Circle size={10} bg={getStatusColor()} />
+              <Text col="$colorMuted" fos="$2">
+                {status} • {ip}:{port}
+              </Text>
+            </XStack>
+          </YStack>
         </XStack>
       </XStack>
 
@@ -203,7 +199,7 @@ export default function DashboardScreen() {
                   <Input
                     value={feedback}
                     onChangeText={setFeedback}
-                    placeholder={t('dashboard.feedbackPlaceholder')}
+                    placeholder={currentEvent.payload?.placeholder || t('dashboard.feedbackPlaceholder')}
                     placeholderTextColor="$gray9"
                     multiline
                     numberOfLines={4}
@@ -214,7 +210,16 @@ export default function DashboardScreen() {
 
               <Card.Footer mt="$4">
                 <YStack w="100%" gap="$2">
-                  {currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
+                  {currentEvent.payload?.allowsTextInput ? (
+                    <Button
+                      w="100%"
+                      theme="active"
+                      disabled={submittingId !== null}
+                      onPress={() => handleAction(currentEvent.eventId, 'SUBMIT')}
+                    >
+                      {submittingId === currentEvent.eventId ? <Spinner color="white" /> : t('dashboard.submit')}
+                    </Button>
+                  ) : currentEvent.payload?.options && currentEvent.payload.options.length > 0 ? (
                     currentEvent.payload.options.map((opt) => (
                       <Button
                         key={opt.id}
@@ -355,6 +360,15 @@ export default function DashboardScreen() {
                           {log.payload.command}
                         </Text>
                       )}
+                      {log.payload?.commandOutput ? (
+                        <ScrollView style={{ maxHeight: 120, marginTop: 8 }} nestedScrollEnabled>
+                          <YStack bg="$background" p="$2" br="$2">
+                            <Text fos="$1" col="$color" ff="$mono">
+                              {log.payload.commandOutput}
+                            </Text>
+                          </YStack>
+                        </ScrollView>
+                      ) : null}
                     </YStack>
                   </XStack>
                 </Card>
@@ -363,6 +377,21 @@ export default function DashboardScreen() {
           </YStack>
         )}
       </ScrollView>
+
+      {/* Footer controls */}
+      <XStack gap="$2" mt="$2" pt="$3" borderTopWidth={1} borderTopColor="$borderColor">
+        <Button
+          size="$3"
+          variant="outlined"
+          onPress={() => router.push('/settings')}
+          f={1}
+        >
+          {'⚙️ ' + t('dashboard.settingsButton')}
+        </Button>
+        <Button size="$3" variant="outlined" onPress={disconnect} f={1} theme="alt2">
+          {'🔌 ' + t('dashboard.disconnect')}
+        </Button>
+      </XStack>
 
       {/* Session History Detail Sheet */}
       <Sheet

@@ -13,10 +13,12 @@ import { CompanionService } from 'code-compa-proto-ts/src/proto/codecompa/v1/com
 let sidecarProcess: ChildProcess | null = null;
 let sidecarPort: number | null = null;
 let sidecarToken: string | null = null;
+let sidecarWebEnabled = false;
 let restartAttempts = 0;
 const maxRestartAttempts = 1;
 let sidebarProvider: SidebarProvider;
 let extensionContext: vscode.ExtensionContext | null = null;
+let isRedirectingToMobile = false;
 
 export function activate(context: vscode.ExtensionContext) {
   extensionContext = context;
@@ -414,14 +416,19 @@ function startSidecar(context: vscode.ExtensionContext) {
   }
 
   // 2. Spawn sidecar child process
-  console.log(`Spawning sidecar: ${binPath} -workspace-path ${workspacePath}`);
+  const webDir = path.join(context.extensionPath, 'bin', 'web');
+  const args = ['-workspace-path', workspacePath];
+  if (fs.existsSync(webDir)) {
+    args.push('-web-dir', webDir);
+  }
+  console.log(`Spawning sidecar: ${binPath} ${args.join(' ')}`);
 
   const env = { ...process.env };
   if (context.extensionMode === vscode.ExtensionMode.Development) {
     env.CODE_COMPA_ENV = 'development';
   }
 
-  sidecarProcess = spawn(binPath, ['-workspace-path', workspacePath], { env });
+  sidecarProcess = spawn(binPath, args, { env });
 
   // Buffer for reading the first line of stdout (config JSON)
   let stdoutBuffer = '';
@@ -442,6 +449,7 @@ function startSidecar(context: vscode.ExtensionContext) {
 
           if (config.status === 'READY') {
             sidecarToken = config.token || sidecarToken;
+            sidecarWebEnabled = !!config.webEnabled;
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge started successfully on port {0}", sidecarPort!)
             );
@@ -460,6 +468,7 @@ function startSidecar(context: vscode.ExtensionContext) {
             if (lockData) {
               sidecarPort = lockData.port;
               sidecarToken = lockData.token;
+              sidecarWebEnabled = fs.existsSync(webDir);
             }
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
@@ -521,6 +530,7 @@ function stopSidecar() {
   }
   sidecarPort = null;
   sidecarToken = null;
+  sidecarWebEnabled = false;
   if (sidebarProvider) {
     sidebarProvider.updateContent();
   }
@@ -592,9 +602,21 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 
     try {
       const ip = getLocalIPAddress();
-      const payload = { ip, port: sidecarPort, token: sidecarToken };
-      const qrDataUrl = await QRCode.toDataURL(JSON.stringify(payload));
-      webview.html = this.getHtmlForCredentials(ip, sidecarPort, sidecarToken, qrDataUrl);
+      const nativePayload = JSON.stringify({ ip, port: sidecarPort, token: sidecarToken });
+      const nativeQrDataUrl = await QRCode.toDataURL(nativePayload);
+
+      const webUrl = `http://${ip}:${sidecarPort}/?ip=${ip}&port=${sidecarPort}&token=${sidecarToken}`;
+      const webQrDataUrl = await QRCode.toDataURL(webUrl);
+
+      webview.html = this.getHtmlForCredentials(
+        ip,
+        sidecarPort,
+        sidecarToken,
+        nativeQrDataUrl,
+        webQrDataUrl,
+        webUrl,
+        sidecarWebEnabled
+      );
     } catch (err: any) {
       webview.html = this.getHtmlForError(err.message || err);
     }
@@ -618,7 +640,22 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     </html>`;
   }
 
-  private getHtmlForCredentials(ip: string, port: number, token: string, qrDataUrl: string): string {
+  private getHtmlForCredentials(
+    ip: string,
+    port: number,
+    token: string,
+    nativeQrDataUrl: string,
+    webQrDataUrl: string,
+    webUrl: string,
+    webEnabled: boolean
+  ): string {
+    const tabsHeader = webEnabled ? `
+      <div class="tabs">
+        <button class="tab-btn active" data-target="tab-native">Native App</button>
+        <button class="tab-btn" data-target="tab-web">Web App</button>
+      </div>
+    ` : '';
+
     const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
     const remoteModeStatus = isRemoteEnabled ? 'ACTIVE' : 'INACTIVE';
     const btnLabel = isRemoteEnabled ? 'Deactivate Remote Mode' : 'Activate Remote Mode';
@@ -628,29 +665,52 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     <html lang="en">
     <head>
       <style>
-        body { font-family: sans-serif; padding: 16px; color: var(--vscode-foreground); display: flex; flex-direction: column; align-items: center; }
-        h3 { margin-bottom: 8px; font-weight: 600; text-align: center; }
-        .description { font-size: 12px; color: var(--vscode-descriptionForeground); text-align: center; margin-bottom: 20px; line-height: 1.4; }
-        .qr-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px; display: flex; justify-content: center; align-items: center; }
+        body { font-family: sans-serif; padding: 12px; color: var(--vscode-foreground); display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
+        h3 { margin-top: 4px; margin-bottom: 12px; font-weight: 600; text-align: center; }
+        .tabs { display: flex; width: 100%; border-bottom: 1px solid var(--vscode-widget-border); margin-bottom: 16px; gap: 4px; }
+        .tab-btn { flex: 1; padding: 8px; background: none; border: none; color: var(--vscode-foreground); cursor: pointer; font-size: 13px; text-align: center; border-bottom: 2px solid transparent; font-weight: 500; opacity: 0.7; }
+        .tab-btn.active { border-bottom-color: var(--vscode-button-background); font-weight: bold; color: var(--vscode-button-background); opacity: 1; }
+        .tab-content { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .tab-content.active { display: flex; }
+        .description { font-size: 12px; color: var(--vscode-descriptionForeground); text-align: center; margin-bottom: 16px; line-height: 1.4; }
+        .qr-container { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 16px; display: flex; justify-content: center; align-items: center; }
         .qr-img { width: 180px; height: 180px; }
         .toggle-container { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding: 10px; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); box-sizing: border-box; }
         .status-row { display: flex; justify-content: space-between; width: 100%; font-size: 13px; margin-bottom: 10px; }
         .status-val { font-weight: bold; color: ${statusColor}; }
         .toggle-btn { background: #2563EB; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; width: 100%; text-align: center; }
         .toggle-btn:hover { background: #1D4ED8; }
-        .info-card { width: 100%; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); padding: 12px; box-sizing: border-box; }
+        .info-card { width: 100%; border-radius: 6px; background: var(--vscode-textBlockCode-background); border: 1px solid var(--vscode-widget-border); padding: 12px; box-sizing: border-box; margin-bottom: 12px; }
         .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
         .info-row:last-child { margin-bottom: 0; }
         .label { font-weight: bold; color: var(--vscode-descriptionForeground); }
-        .value { font-family: monospace; color: var(--vscode-textPreformat-foreground); }
+        .value { font-family: monospace; color: var(--vscode-textPreformat-foreground); word-break: break-all; }
+        .link-container { width: 100%; text-align: center; margin-top: 4px; }
+        .web-link { font-size: 12px; color: var(--vscode-link-activeForeground); text-decoration: none; word-break: break-all; }
+        .web-link:hover { text-decoration: underline; }
       </style>
     </head>
     <body>
-      <h3>Pair Companion App</h3>
-      <div class="description">Scan this QR code with the Code Compa mobile app to establish a secure connection.</div>
-      <div class="qr-container">
-        <img class="qr-img" src="${qrDataUrl}" alt="QR Code" />
+      <h3>Pair Companion</h3>
+      ${tabsHeader}
+
+      <div id="tab-native" class="tab-content active">
+        <div class="description">Scan this QR code with the Code Compa mobile app to establish a secure connection.</div>
+        <div class="qr-container">
+          <img class="qr-img" src="${nativeQrDataUrl}" alt="QR Code" />
+        </div>
       </div>
+
+      <div id="tab-web" class="tab-content">
+        <div class="description">Scan QR code or click the link below to open Code Compa directly in your mobile browser.</div>
+        <div class="qr-container">
+          <img class="qr-img" src="${webQrDataUrl}" alt="Web QR Code" />
+        </div>
+        <div class="link-container">
+          <a class="web-link" href="${webUrl}" target="_blank">Open Web Companion App &rarr;</a>
+        </div>
+      </div>
+
       <div class="toggle-container">
         <div class="status-row">
           <span>Remote Mode (MCP/HITL):</span>
@@ -678,6 +738,19 @@ class SidebarProvider implements vscode.WebviewViewProvider {
           vscode.postMessage({ command: 'toggleRemoteMode' });
         }
       </script>
+
+      <script>
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.target).classList.add('active');
+          });
+        });
+      </script>
     </body>
     </html>`;
   }
@@ -701,7 +774,7 @@ class SidebarProvider implements vscode.WebviewViewProvider {
 
 function shouldRedirectToMobile(): boolean {
   const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
-  return isRemoteEnabled && !!sidecarPort && !!sidecarToken;
+  return isRemoteEnabled && !!sidecarPort && !!sidecarToken && !isRedirectingToMobile;
 }
 
 function activateHITLInterception(context: vscode.ExtensionContext) {
@@ -768,6 +841,7 @@ function activateHITLInterception(context: vscode.ExtensionContext) {
 }
 
 async function redirectInfoPromptToMobile(message: string, items: any[]): Promise<any> {
+  isRedirectingToMobile = true;
   const options: Array<{ id: string; label: string }> = [];
   let messageOptions: any = undefined;
   const actionItems: any[] = [];
@@ -804,11 +878,14 @@ async function redirectInfoPromptToMobile(message: string, items: any[]): Promis
     }
   } catch (err) {
     console.error('Mobile prompt failed, falling back:', err);
+  } finally {
+    isRedirectingToMobile = false;
   }
   return undefined;
 }
 
 async function redirectQuickPickToMobile(items: any[], options?: any): Promise<any> {
+  isRedirectingToMobile = true;
   const mappedOptions = items.map(item => {
     const label = typeof item === 'string' ? item : (item.label || item.description || JSON.stringify(item));
     return { id: label, label };
@@ -835,11 +912,14 @@ async function redirectQuickPickToMobile(items: any[], options?: any): Promise<a
     }
   } catch (err) {
     console.error('Mobile quick pick failed, falling back:', err);
+  } finally {
+    isRedirectingToMobile = false;
   }
   return undefined;
 }
 
 async function redirectInputBoxToMobile(options?: any): Promise<string | undefined> {
+  isRedirectingToMobile = true;
   try {
     const response: any = await vscode.commands.executeCommand('code-compa.requestIntervention', {
       type: 'TEXT_INPUT_REQUEST',
@@ -853,6 +933,8 @@ async function redirectInputBoxToMobile(options?: any): Promise<string | undefin
     return response?.feedbackText;
   } catch (err) {
     console.error('Mobile input box failed, falling back:', err);
+  } finally {
+    isRedirectingToMobile = false;
   }
   return undefined;
 }
