@@ -22,10 +22,10 @@ build-extension:
 	npm --prefix plugins/vscode-extension run compile
 
 build-web:
-	rm -rf plugins/vscode-extension/bin/web
+	rm -rf plugins/vscode-extension/web
 	cd apps/mobile-expo && npx expo export --platform web --clear
-	mkdir -p plugins/vscode-extension/bin/web
-	cp -R apps/mobile-expo/dist/* plugins/vscode-extension/bin/web/
+	mkdir -p plugins/vscode-extension/web
+	cp -R apps/mobile-expo/dist/* plugins/vscode-extension/web/
 
 all: proto build-bridge build-extension build-web
 

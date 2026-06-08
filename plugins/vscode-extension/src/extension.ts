@@ -416,7 +416,7 @@ function startSidecar(context: vscode.ExtensionContext) {
   }
 
   // 2. Spawn sidecar child process
-  const webDir = path.join(context.extensionPath, 'bin', 'web');
+  const webDir = path.join(context.extensionPath, 'web');
   const args = ['-workspace-path', workspacePath];
   if (fs.existsSync(webDir)) {
     args.push('-web-dir', webDir);
