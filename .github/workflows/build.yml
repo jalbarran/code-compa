@@ -22,15 +22,21 @@ jobs:
     - name: Build Multiplatform Binaries
       run: |
         cd packages/bridge-go
-        mkdir -p bin
+        
+        # 1. Compile for Linux AMD64 (Current environment)
         GOOS=linux GOARCH=amd64 go build -o bin/bridge-linux-amd64 ./cmd/bridge
+        
+        # 2. Compile for macOS ARM64 (Apple Silicon M1/M2/M3)
         GOOS=darwin GOARCH=arm64 go build -o bin/bridge-darwin-arm64 ./cmd/bridge
+        
+        # 3. Compile for Windows AMD64
         GOOS=windows GOARCH=amd64 go build -o bin/bridge-windows-amd64.exe ./cmd/bridge
 
     - name: Upload Go Sidecar Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: go-sidecar
+        # Upload all 3 executables renamed contained in the 'bin' folder
         path: packages/bridge-go/bin/
         if-no-files-found: error
 
@@ -53,11 +59,10 @@ jobs:
         cd ../../apps/mobile-expo
         npm ci
 
-    # Cambiado: Ejecuta tu comando específico con la bandera --clear
     - name: Build Web App
       run: |
         cd apps/mobile-expo
-        npx expo export --platform web --clear
+        npx expo export --platform web
 
     - name: Upload Web App Artifact
       uses: actions/upload-artifact@v4
@@ -85,7 +90,6 @@ jobs:
         name: go-sidecar
         path: plugins/vscode-extension/bin/
 
-    # Cambiado: Descarga la Web App directamente en la carpeta 'web' de la extensión
     - name: Download Web App
       uses: actions/download-artifact@v4
       with:
@@ -94,15 +98,19 @@ jobs:
 
     - name: Build VS Code Extension
       run: |
+        # Pack the local dependency to a .tgz archive
         cd packages/proto-ts
         npm pack
         
+        # Modify package.json to point to the .tgz package directly
         cd ../../plugins/vscode-extension
         node -e "const p = require('./package.json'); p.dependencies['code-compa-proto-ts'] = 'file:../../packages/proto-ts/code-compa-proto-ts-0.0.1.tgz'; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2))"
         
+        # Remove package-lock.json files at both root and local folder to bypass sha512 integrity verification errors
         rm -f ../../package-lock.json
         rm -f package-lock.json
         
+        # Install vscode-extension dependencies physically
         npm install
         npm run compile
 
@@ -110,11 +118,6 @@ jobs:
       run: |
         cd plugins/vscode-extension
         cp ../../LICENSE ./
-        
-        # Asegurar permisos de ejecución para los binarios de Go descargados
-        chmod +x bin/bridge-linux-amd64 || true
-        chmod +x bin/bridge-darwin-arm64 || true
-        
         npx @vscode/vsce package --no-dependencies --allow-missing-repository
 
     - name: Upload VSIX Artifact
