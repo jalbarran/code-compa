@@ -1,7 +1,7 @@
 import React from 'react';
-import { Switch, Image } from 'react-native';
+import { Switch, Image, ScrollView } from 'react-native';
 const logoImg = require('../../assets/images/icon.png');
-import { YStack, XStack, Text, Button, Separator, Card } from 'tamagui';
+import { YStack, XStack, Text, Button, Separator, Card, Input } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useConnectionStore, UserTheme, UserLanguage } from '../store/useConnectionStore';
@@ -15,10 +15,19 @@ export default function SettingsScreen() {
     userTheme,
     userLanguage,
     hapticsEnabled,
+    deviceName,
+    activeConnections,
     setTheme,
     setLanguage,
     setHapticsEnabled,
+    setDeviceName,
+    fetchActiveConnections,
+    revokeConnection,
   } = useConnectionStore();
+
+  React.useEffect(() => {
+    fetchActiveConnections();
+  }, []);
 
   const THEME_OPTIONS: { key: UserTheme; label: string }[] = [
     { key: 'system', label: t('settings.themeSystem') },
@@ -57,7 +66,23 @@ export default function SettingsScreen() {
         </Text>
       </XStack>
 
-      <YStack gap="$5">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+        <YStack gap="$5">
+        {/* Device Name Section */}
+        <Card borderWidth={1} p="$4" gap="$3">
+          <YStack gap="$1" mb="$2">
+            <Text fow="bold" fos="$4" col="$color">{'Device Name'}</Text>
+            <Text fos="$2" col="$colorMuted">{'This name identifies this client on the connection list.'}</Text>
+          </YStack>
+          <Input
+            value={deviceName}
+            onChangeText={setDeviceName}
+            placeholder="e.g. My Device"
+          />
+        </Card>
+
+        <Separator />
+
         {/* Language Section */}
         <Card borderWidth={1} p="$4" gap="$3">
           <YStack gap="$1" mb="$2">
@@ -121,7 +146,38 @@ export default function SettingsScreen() {
             />
           </XStack>
         </Card>
-      </YStack>
+
+        {activeConnections.length > 0 && (
+          <>
+            <Separator />
+            <Card borderWidth={1} p="$4" gap="$3">
+              <YStack gap="$1" mb="$2">
+                <Text fow="bold" fos="$4" col="$color">{'Active Connections'}</Text>
+                <Text fos="$2" col="$colorMuted">{'Manage other active connections to the bridge.'}</Text>
+              </YStack>
+              <YStack gap="$2">
+                {activeConnections.map((conn) => (
+                  <XStack key={conn.id} jc="space-between" ai="center" p="$3" bg="$backgroundPress" br="$2">
+                    <YStack f={1}>
+                      <Text fow="bold" fos="$3" col="$color">{conn.deviceName}</Text>
+                      <Text fos="$1" col="$colorMuted">{'ID: ' + conn.id}</Text>
+                    </YStack>
+                    <Button
+                      size="$2.5"
+                      theme="alt2"
+                      variant="outlined"
+                      onPress={() => revokeConnection(conn.id)}
+                    >
+                      {'Revoke'}
+                    </Button>
+                  </XStack>
+                ))}
+              </YStack>
+            </Card>
+          </>
+        )}
+        </YStack>
+      </ScrollView>
     </YStack>
   );
 }

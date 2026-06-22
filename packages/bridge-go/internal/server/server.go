@@ -15,19 +15,26 @@ import (
 	"github.com/jalbarran/code-compa/packages/bridge-go/pkg/api/v1/proto/codecompa/v1/apiv1connect"
 )
 
+type ClientConnection struct {
+	ID          string
+	DeviceName  string
+	ConnectedAt int64
+	EventsChan  chan *v1.AgentEvent
+	CancelCtx   context.CancelFunc
+}
+
 type CompanionServer struct {
-	token         string
-	eventsChan    chan *v1.AgentEvent
-	mu            sync.Mutex
-	responses     map[string]chan *v1.RespondToInterventionRequest
-	activeStreams int
+	token       string
+	mu          sync.RWMutex
+	connections map[string]*ClientConnection
+	responses   map[string]chan *v1.RespondToInterventionRequest
 }
 
 func NewCompanionServer(token string) *CompanionServer {
 	return &CompanionServer{
-		token:      token,
-		eventsChan: make(chan *v1.AgentEvent, 100),
-		responses:  make(map[string]chan *v1.RespondToInterventionRequest),
+		token:       token,
+		connections: make(map[string]*ClientConnection),
+		responses:   make(map[string]chan *v1.RespondToInterventionRequest),
 	}
 }
 
@@ -36,21 +43,39 @@ func (s *CompanionServer) StreamAgentEvents(
 	req *connect.Request[v1.StreamAgentEventsRequest],
 	stream *connect.ServerStream[v1.AgentEvent],
 ) error {
+	deviceName := req.Msg.DeviceName
+	if deviceName == "" {
+		deviceName = "Unknown Device"
+	}
+
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	connID := "conn-" + uuid.New().String()[:8]
+	conn := &ClientConnection{
+		ID:          connID,
+		DeviceName:  deviceName,
+		ConnectedAt: time.Now().Unix(),
+		EventsChan:  make(chan *v1.AgentEvent, 100),
+		CancelCtx:   cancel,
+	}
+
 	s.mu.Lock()
-	s.activeStreams++
+	s.connections[connID] = conn
 	s.mu.Unlock()
 
 	defer func() {
 		s.mu.Lock()
-		s.activeStreams--
+		delete(s.connections, connID)
+		close(conn.EventsChan)
 		s.mu.Unlock()
 	}()
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case event, ok := <-s.eventsChan:
+		case <-cancelCtx.Done():
+			return cancelCtx.Err()
+		case event, ok := <-conn.EventsChan:
 			if !ok {
 				return nil
 			}
@@ -89,9 +114,9 @@ func (s *CompanionServer) RequestIntervention(
 	ctx context.Context,
 	req *connect.Request[v1.RequestInterventionRequest],
 ) (*connect.Response[v1.RequestInterventionResponse], error) {
-	s.mu.Lock()
-	streams := s.activeStreams
-	s.mu.Unlock()
+	s.mu.RLock()
+	streams := len(s.connections)
+	s.mu.RUnlock()
 
 	if streams == 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no companion device connected"))
@@ -158,16 +183,52 @@ func (s *CompanionServer) PostTelemetryEvent(
 		Payload:  payload,
 	}
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case s.eventsChan <- event:
-		// Broadcasted downstream
-	default:
-		return nil, errors.New("event queue full")
+	s.mu.RLock()
+	for _, conn := range s.connections {
+		select {
+		case conn.EventsChan <- event:
+		default:
+		}
 	}
+	s.mu.RUnlock()
 
 	return connect.NewResponse(&v1.PostTelemetryEventResponse{Success: true}), nil
+}
+
+func (s *CompanionServer) ListConnections(
+	ctx context.Context,
+	req *connect.Request[v1.ListConnectionsRequest],
+) (*connect.Response[v1.ListConnectionsResponse], error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var list []*v1.ConnectionInfo
+	for _, conn := range s.connections {
+		list = append(list, &v1.ConnectionInfo{
+			Id:          conn.ID,
+			DeviceName:  conn.DeviceName,
+			ConnectedAt: conn.ConnectedAt,
+		})
+	}
+
+	return connect.NewResponse(&v1.ListConnectionsResponse{Connections: list}), nil
+}
+
+func (s *CompanionServer) DisconnectConnection(
+	ctx context.Context,
+	req *connect.Request[v1.DisconnectConnectionRequest],
+) (*connect.Response[v1.DisconnectConnectionResponse], error) {
+	s.mu.Lock()
+	conn, exists := s.connections[req.Msg.Id]
+	s.mu.Unlock()
+
+	if !exists {
+		return connect.NewResponse(&v1.DisconnectConnectionResponse{Success: false}), nil
+	}
+
+	conn.CancelCtx()
+
+	return connect.NewResponse(&v1.DisconnectConnectionResponse{Success: true}), nil
 }
 
 // QueueEvent adds an event to be streamed to the mobile client and waits for approval.
@@ -184,19 +245,37 @@ func (s *CompanionServer) QueueEvent(ctx context.Context, event *v1.AgentEvent) 
 		s.mu.Unlock()
 	}()
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case s.eventsChan <- event:
-		// Queued
-	default:
-		return nil, errors.New("event queue full")
+	s.mu.RLock()
+	for _, conn := range s.connections {
+		select {
+		case conn.EventsChan <- event:
+		default:
+		}
 	}
+	s.mu.RUnlock()
 
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case response := <-respChan:
+		// Broadcast resolution to other devices to dismiss the HITL card
+		s.mu.RLock()
+		for _, conn := range s.connections {
+			dismissEvent := &v1.AgentEvent{
+				EventId:  event.EventId,
+				Type:     "INTERVENTION_RESOLVED",
+				Metadata: event.Metadata,
+				Payload: &v1.AgentPayload{
+					Title:       "Resolved",
+					Description: "This intervention has been resolved on another device.",
+				},
+			}
+			select {
+			case conn.EventsChan <- dismissEvent:
+			default:
+			}
+		}
+		s.mu.RUnlock()
 		return response, nil
 	}
 }
@@ -244,5 +323,4 @@ func (i *authInterceptor) validate(authHeader string) bool {
 	return parts[1] == i.token
 }
 
-// Make sure CompanionServer implements apiv1connect.CompanionServiceHandler
 var _ apiv1connect.CompanionServiceHandler = (*CompanionServer)(nil)

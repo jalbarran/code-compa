@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import { CompanionService } from 'code-compa-proto-ts/src/proto/codecompa/v1/companion_connect';
 import { AgentEvent } from 'code-compa-proto-ts/src/proto/codecompa/v1/companion_pb';
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 async function triggerHapticNotification() {
   try {
@@ -12,7 +13,6 @@ async function triggerHapticNotification() {
     // Ignore haptic errors on unsupported platforms/devices
   }
 }
-
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR';
 export type UserTheme = 'system' | 'light' | 'dark';
@@ -34,6 +34,8 @@ interface ConnectionState {
   queue: AgentEvent[];
   history: HistoryEntry[];
   telemetryLogs: AgentEvent[];
+  activeConnections: any[];
+  deviceName: string;
 
   // User preferences
   userTheme: UserTheme;
@@ -44,12 +46,15 @@ interface ConnectionState {
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
   respond: (eventId: string, optionId: string, feedbackText?: string) => Promise<boolean>;
+  fetchActiveConnections: () => Promise<void>;
+  revokeConnection: (id: string) => Promise<boolean>;
 
   // Preferences actions
   setTheme: (theme: UserTheme) => void;
   setLanguage: (lang: UserLanguage) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setNotificationFilter: (filter: 'all' | 'agent_thinking' | 'agent_actions') => void;
+  setDeviceName: (name: string) => void;
 }
 
 let activeAbortController: AbortController | null = null;
@@ -63,6 +68,8 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   queue: [],
   history: [],
   telemetryLogs: [],
+  activeConnections: [],
+  deviceName: Platform.OS === 'web' ? 'Web Companion' : (Platform.OS === 'android' ? 'Android Device' : 'iOS Device'),
 
   // Preference defaults
   userTheme: 'system',
@@ -74,6 +81,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   setLanguage: (lang) => set({ userLanguage: lang }),
   setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
   setNotificationFilter: (filter) => set({ notificationFilter: filter }),
+  setDeviceName: (name) => set({ deviceName: name }),
 
   connect: async (ip, port, token) => {
     if (activeAbortController) {
@@ -81,7 +89,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       activeAbortController = null;
     }
 
-    set({ ip, port, token, status: 'CONNECTING', errorMessage: null, queue: [], telemetryLogs: [] });
+    set({ ip, port, token, status: 'CONNECTING', errorMessage: null, queue: [], telemetryLogs: [], activeConnections: [] });
 
     const transport = createConnectTransport({
       baseUrl: `http://${ip}:${port}`,
@@ -98,12 +106,22 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     activeAbortController = abortController;
 
     try {
-      const stream = client.streamAgentEvents({}, { signal: abortController.signal });
+      const stream = client.streamAgentEvents({ deviceName: get().deviceName }, { signal: abortController.signal });
       set({ status: 'CONNECTED' });
+
+      // Load initial active connections
+      get().fetchActiveConnections();
 
       (async () => {
         try {
           for await (const event of stream) {
+            if (event.type === 'INTERVENTION_RESOLVED') {
+              set((state) => ({
+                queue: state.queue.filter((e) => e.eventId !== event.eventId)
+              }));
+              continue;
+            }
+
             set((state) => {
               const isTelemetry = event.type.startsWith('FILE_') || event.type.startsWith('TERMINAL_') || event.type.includes('TEST_EVENT') || event.type === 'agent_thinking' || event.type === 'agent_actions';
               if (isTelemetry) {
@@ -142,7 +160,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       activeAbortController.abort();
       activeAbortController = null;
     }
-    set({ ip: null, port: null, token: null, status: 'DISCONNECTED', queue: [], telemetryLogs: [], errorMessage: null });
+    set({ ip: null, port: null, token: null, status: 'DISCONNECTED', queue: [], telemetryLogs: [], errorMessage: null, activeConnections: [] });
   },
 
   respond: async (eventId, optionId, feedbackText = '') => {
@@ -184,6 +202,57 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       return false;
     } catch (err) {
       console.error('Failed to submit intervention response:', err);
+      return false;
+    }
+  },
+
+  fetchActiveConnections: async () => {
+    const { ip, port, token, status } = get();
+    if (status !== 'CONNECTED' || !ip || !port || !token) {
+      return;
+    }
+    const transport = createConnectTransport({
+      baseUrl: `http://${ip}:${port}`,
+      interceptors: [
+        (next) => async (req) => {
+          req.header.set('Authorization', `Bearer ${token}`);
+          return await next(req);
+        }
+      ]
+    });
+    const client = createClient(CompanionService, transport);
+    try {
+      const res = await client.listConnections({});
+      set({ activeConnections: res.connections || [] });
+    } catch (err) {
+      console.error('Failed to list connections:', err);
+    }
+  },
+
+  revokeConnection: async (id: string) => {
+    const { ip, port, token, status } = get();
+    if (status !== 'CONNECTED' || !ip || !port || !token) {
+      return false;
+    }
+    const transport = createConnectTransport({
+      baseUrl: `http://${ip}:${port}`,
+      interceptors: [
+        (next) => async (req) => {
+          req.header.set('Authorization', `Bearer ${token}`);
+          return await next(req);
+        }
+      ]
+    });
+    const client = createClient(CompanionService, transport);
+    try {
+      const res = await client.disconnectConnection({ id });
+      if (res.success) {
+        await get().fetchActiveConnections();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to revoke connection:', err);
       return false;
     }
   }

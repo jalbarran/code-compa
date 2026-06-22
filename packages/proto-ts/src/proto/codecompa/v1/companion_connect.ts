@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AgentEvent, PostTelemetryEventRequest, PostTelemetryEventResponse, RequestInterventionRequest, RequestInterventionResponse, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
+import { AgentEvent, DisconnectConnectionRequest, DisconnectConnectionResponse, ListConnectionsRequest, ListConnectionsResponse, PostTelemetryEventRequest, PostTelemetryEventResponse, RequestInterventionRequest, RequestInterventionResponse, RespondToInterventionRequest, RespondToInterventionResponse, StreamAgentEventsRequest } from "./companion_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -54,6 +54,28 @@ export const CompanionService = {
       name: "PostTelemetryEvent",
       I: PostTelemetryEventRequest,
       O: PostTelemetryEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * List all active companion connections
+     *
+     * @generated from rpc codecompa.v1.CompanionService.ListConnections
+     */
+    listConnections: {
+      name: "ListConnections",
+      I: ListConnectionsRequest,
+      O: ListConnectionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Remotely terminate a companion connection by ID
+     *
+     * @generated from rpc codecompa.v1.CompanionService.DisconnectConnection
+     */
+    disconnectConnection: {
+      name: "DisconnectConnection",
+      I: DisconnectConnectionRequest,
+      O: DisconnectConnectionResponse,
       kind: MethodKind.Unary,
     },
   }

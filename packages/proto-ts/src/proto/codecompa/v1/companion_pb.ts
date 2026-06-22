@@ -10,6 +10,11 @@ import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
  * @generated from message codecompa.v1.StreamAgentEventsRequest
  */
 export class StreamAgentEventsRequest extends Message<StreamAgentEventsRequest> {
+  /**
+   * @generated from field: string device_name = 1;
+   */
+  deviceName = "";
+
   constructor(data?: PartialMessage<StreamAgentEventsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -18,6 +23,7 @@ export class StreamAgentEventsRequest extends Message<StreamAgentEventsRequest> 
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "codecompa.v1.StreamAgentEventsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "device_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StreamAgentEventsRequest {
@@ -582,6 +588,197 @@ export class PostTelemetryEventResponse extends Message<PostTelemetryEventRespon
 
   static equals(a: PostTelemetryEventResponse | PlainMessage<PostTelemetryEventResponse> | undefined, b: PostTelemetryEventResponse | PlainMessage<PostTelemetryEventResponse> | undefined): boolean {
     return proto3.util.equals(PostTelemetryEventResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.ListConnectionsRequest
+ */
+export class ListConnectionsRequest extends Message<ListConnectionsRequest> {
+  constructor(data?: PartialMessage<ListConnectionsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.ListConnectionsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListConnectionsRequest {
+    return new ListConnectionsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListConnectionsRequest {
+    return new ListConnectionsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListConnectionsRequest {
+    return new ListConnectionsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListConnectionsRequest | PlainMessage<ListConnectionsRequest> | undefined, b: ListConnectionsRequest | PlainMessage<ListConnectionsRequest> | undefined): boolean {
+    return proto3.util.equals(ListConnectionsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.ListConnectionsResponse
+ */
+export class ListConnectionsResponse extends Message<ListConnectionsResponse> {
+  /**
+   * @generated from field: repeated codecompa.v1.ConnectionInfo connections = 1;
+   */
+  connections: ConnectionInfo[] = [];
+
+  constructor(data?: PartialMessage<ListConnectionsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.ListConnectionsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "connections", kind: "message", T: ConnectionInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListConnectionsResponse {
+    return new ListConnectionsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListConnectionsResponse {
+    return new ListConnectionsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListConnectionsResponse {
+    return new ListConnectionsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListConnectionsResponse | PlainMessage<ListConnectionsResponse> | undefined, b: ListConnectionsResponse | PlainMessage<ListConnectionsResponse> | undefined): boolean {
+    return proto3.util.equals(ListConnectionsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.ConnectionInfo
+ */
+export class ConnectionInfo extends Message<ConnectionInfo> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string device_name = 2;
+   */
+  deviceName = "";
+
+  /**
+   * @generated from field: int64 connected_at = 3;
+   */
+  connectedAt = protoInt64.zero;
+
+  constructor(data?: PartialMessage<ConnectionInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.ConnectionInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "device_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "connected_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ConnectionInfo {
+    return new ConnectionInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ConnectionInfo {
+    return new ConnectionInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ConnectionInfo {
+    return new ConnectionInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ConnectionInfo | PlainMessage<ConnectionInfo> | undefined, b: ConnectionInfo | PlainMessage<ConnectionInfo> | undefined): boolean {
+    return proto3.util.equals(ConnectionInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.DisconnectConnectionRequest
+ */
+export class DisconnectConnectionRequest extends Message<DisconnectConnectionRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<DisconnectConnectionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.DisconnectConnectionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DisconnectConnectionRequest {
+    return new DisconnectConnectionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DisconnectConnectionRequest {
+    return new DisconnectConnectionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DisconnectConnectionRequest {
+    return new DisconnectConnectionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DisconnectConnectionRequest | PlainMessage<DisconnectConnectionRequest> | undefined, b: DisconnectConnectionRequest | PlainMessage<DisconnectConnectionRequest> | undefined): boolean {
+    return proto3.util.equals(DisconnectConnectionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message codecompa.v1.DisconnectConnectionResponse
+ */
+export class DisconnectConnectionResponse extends Message<DisconnectConnectionResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<DisconnectConnectionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "codecompa.v1.DisconnectConnectionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DisconnectConnectionResponse {
+    return new DisconnectConnectionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DisconnectConnectionResponse {
+    return new DisconnectConnectionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DisconnectConnectionResponse {
+    return new DisconnectConnectionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DisconnectConnectionResponse | PlainMessage<DisconnectConnectionResponse> | undefined, b: DisconnectConnectionResponse | PlainMessage<DisconnectConnectionResponse> | undefined): boolean {
+    return proto3.util.equals(DisconnectConnectionResponse, a, b);
   }
 }
 

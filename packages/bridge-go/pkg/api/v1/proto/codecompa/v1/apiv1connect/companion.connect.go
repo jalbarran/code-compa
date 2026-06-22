@@ -45,6 +45,12 @@ const (
 	// CompanionServicePostTelemetryEventProcedure is the fully-qualified name of the CompanionService's
 	// PostTelemetryEvent RPC.
 	CompanionServicePostTelemetryEventProcedure = "/codecompa.v1.CompanionService/PostTelemetryEvent"
+	// CompanionServiceListConnectionsProcedure is the fully-qualified name of the CompanionService's
+	// ListConnections RPC.
+	CompanionServiceListConnectionsProcedure = "/codecompa.v1.CompanionService/ListConnections"
+	// CompanionServiceDisconnectConnectionProcedure is the fully-qualified name of the
+	// CompanionService's DisconnectConnection RPC.
+	CompanionServiceDisconnectConnectionProcedure = "/codecompa.v1.CompanionService/DisconnectConnection"
 )
 
 // CompanionServiceClient is a client for the codecompa.v1.CompanionService service.
@@ -57,6 +63,10 @@ type CompanionServiceClient interface {
 	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
 	// The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
 	PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error)
+	// List all active companion connections
+	ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error)
+	// Remotely terminate a companion connection by ID
+	DisconnectConnection(context.Context, *connect.Request[v1.DisconnectConnectionRequest]) (*connect.Response[v1.DisconnectConnectionResponse], error)
 }
 
 // NewCompanionServiceClient constructs a client for the codecompa.v1.CompanionService service. By
@@ -89,6 +99,16 @@ func NewCompanionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			baseURL+CompanionServicePostTelemetryEventProcedure,
 			opts...,
 		),
+		listConnections: connect.NewClient[v1.ListConnectionsRequest, v1.ListConnectionsResponse](
+			httpClient,
+			baseURL+CompanionServiceListConnectionsProcedure,
+			opts...,
+		),
+		disconnectConnection: connect.NewClient[v1.DisconnectConnectionRequest, v1.DisconnectConnectionResponse](
+			httpClient,
+			baseURL+CompanionServiceDisconnectConnectionProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -98,6 +118,8 @@ type companionServiceClient struct {
 	respondToIntervention *connect.Client[v1.RespondToInterventionRequest, v1.RespondToInterventionResponse]
 	requestIntervention   *connect.Client[v1.RequestInterventionRequest, v1.RequestInterventionResponse]
 	postTelemetryEvent    *connect.Client[v1.PostTelemetryEventRequest, v1.PostTelemetryEventResponse]
+	listConnections       *connect.Client[v1.ListConnectionsRequest, v1.ListConnectionsResponse]
+	disconnectConnection  *connect.Client[v1.DisconnectConnectionRequest, v1.DisconnectConnectionResponse]
 }
 
 // StreamAgentEvents calls codecompa.v1.CompanionService.StreamAgentEvents.
@@ -120,6 +142,16 @@ func (c *companionServiceClient) PostTelemetryEvent(ctx context.Context, req *co
 	return c.postTelemetryEvent.CallUnary(ctx, req)
 }
 
+// ListConnections calls codecompa.v1.CompanionService.ListConnections.
+func (c *companionServiceClient) ListConnections(ctx context.Context, req *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error) {
+	return c.listConnections.CallUnary(ctx, req)
+}
+
+// DisconnectConnection calls codecompa.v1.CompanionService.DisconnectConnection.
+func (c *companionServiceClient) DisconnectConnection(ctx context.Context, req *connect.Request[v1.DisconnectConnectionRequest]) (*connect.Response[v1.DisconnectConnectionResponse], error) {
+	return c.disconnectConnection.CallUnary(ctx, req)
+}
+
 // CompanionServiceHandler is an implementation of the codecompa.v1.CompanionService service.
 type CompanionServiceHandler interface {
 	// The mobile app calls this stream to receive real-time events from the AI agent
@@ -130,6 +162,10 @@ type CompanionServiceHandler interface {
 	RequestIntervention(context.Context, *connect.Request[v1.RequestInterventionRequest]) (*connect.Response[v1.RequestInterventionResponse], error)
 	// The IDE extension (or local agent) calls this to post non-blocking telemetry and log updates
 	PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error)
+	// List all active companion connections
+	ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error)
+	// Remotely terminate a companion connection by ID
+	DisconnectConnection(context.Context, *connect.Request[v1.DisconnectConnectionRequest]) (*connect.Response[v1.DisconnectConnectionResponse], error)
 }
 
 // NewCompanionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -158,6 +194,16 @@ func NewCompanionServiceHandler(svc CompanionServiceHandler, opts ...connect.Han
 		svc.PostTelemetryEvent,
 		opts...,
 	)
+	companionServiceListConnectionsHandler := connect.NewUnaryHandler(
+		CompanionServiceListConnectionsProcedure,
+		svc.ListConnections,
+		opts...,
+	)
+	companionServiceDisconnectConnectionHandler := connect.NewUnaryHandler(
+		CompanionServiceDisconnectConnectionProcedure,
+		svc.DisconnectConnection,
+		opts...,
+	)
 	return "/codecompa.v1.CompanionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CompanionServiceStreamAgentEventsProcedure:
@@ -168,6 +214,10 @@ func NewCompanionServiceHandler(svc CompanionServiceHandler, opts ...connect.Han
 			companionServiceRequestInterventionHandler.ServeHTTP(w, r)
 		case CompanionServicePostTelemetryEventProcedure:
 			companionServicePostTelemetryEventHandler.ServeHTTP(w, r)
+		case CompanionServiceListConnectionsProcedure:
+			companionServiceListConnectionsHandler.ServeHTTP(w, r)
+		case CompanionServiceDisconnectConnectionProcedure:
+			companionServiceDisconnectConnectionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -191,4 +241,12 @@ func (UnimplementedCompanionServiceHandler) RequestIntervention(context.Context,
 
 func (UnimplementedCompanionServiceHandler) PostTelemetryEvent(context.Context, *connect.Request[v1.PostTelemetryEventRequest]) (*connect.Response[v1.PostTelemetryEventResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.PostTelemetryEvent is not implemented"))
+}
+
+func (UnimplementedCompanionServiceHandler) ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.ListConnections is not implemented"))
+}
+
+func (UnimplementedCompanionServiceHandler) DisconnectConnection(context.Context, *connect.Request[v1.DisconnectConnectionRequest]) (*connect.Response[v1.DisconnectConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("codecompa.v1.CompanionService.DisconnectConnection is not implemented"))
 }
