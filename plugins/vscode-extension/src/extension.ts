@@ -176,9 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(runCommand);
 
-  // Set up observers
-  setupTerminalObserver(context);
-  setupFileSystemWatcher(context);
+
 
   // Hook native API interception (Spec 07)
   activateHITLInterception(context);
@@ -250,62 +248,7 @@ function analyzeCommandRisk(command: string): 'HIGH' | 'MEDIUM' | 'LOW' {
   return 'LOW';
 }
 
-function setupTerminalObserver(context: vscode.ExtensionContext) {
-  if ('onDidStartTerminalShellExecution' in (vscode.window as any)) {
-    context.subscriptions.push(
-      (vscode.window as any).onDidStartTerminalShellExecution(async (event: any) => {
-        const commandLine = event.execution.commandLine.value;
-        const directory = event.shellIntegration?.cwd?.fsPath || '';
-        await dispatchTelemetryEvent('TERMINAL_COMMAND_STARTED', 'Terminal Command Started', `Running: ${commandLine}`, {
-          command: commandLine,
-          directory,
-          riskLevel: analyzeCommandRisk(commandLine)
-        });
-      })
-    );
 
-    context.subscriptions.push(
-      (vscode.window as any).onDidEndTerminalShellExecution(async (event: any) => {
-        const commandLine = event.execution.commandLine.value;
-        const exitCode = event.exitCode ?? 0;
-        await dispatchTelemetryEvent('TERMINAL_COMMAND_ENDED', 'Terminal Command Ended', `Finished: ${commandLine} (Exit Code: ${exitCode})`, {
-          command: commandLine,
-          exitCode
-        });
-      })
-    );
-  }
-}
-
-function setupFileSystemWatcher(context: vscode.ExtensionContext) {
-  const watcher = vscode.workspace.createFileSystemWatcher('**/*');
-
-  watcher.onDidCreate(async (uri) => {
-    const relPath = vscode.workspace.asRelativePath(uri);
-    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
-    await dispatchTelemetryEvent('FILE_CREATED', 'File Created', `Created file: ${relPath}`, {
-      filePath: relPath
-    });
-  });
-
-  watcher.onDidChange(async (uri) => {
-    const relPath = vscode.workspace.asRelativePath(uri);
-    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
-    await dispatchTelemetryEvent('FILE_MUTATED', 'File Modified', `Modified file: ${relPath}`, {
-      filePath: relPath
-    });
-  });
-
-  watcher.onDidDelete(async (uri) => {
-    const relPath = vscode.workspace.asRelativePath(uri);
-    if (relPath.includes('node_modules') || relPath.includes('.git') || relPath.includes('out') || relPath.includes('bin')) return;
-    await dispatchTelemetryEvent('FILE_DELETED', 'File Deleted', `Deleted file: ${relPath}`, {
-      filePath: relPath
-    });
-  });
-
-  context.subscriptions.push(watcher);
-}
 
 function getClient() {
   if (!sidecarPort || !sidecarToken) {
@@ -359,6 +302,25 @@ function readLockfile(): { port: number; token: string } | null {
     console.error('Failed to read lockfile:', err);
   }
   return null;
+}
+
+function writeLockfileSettings() {
+  try {
+    const lockPath = getLockfilePath();
+    if (fs.existsSync(lockPath)) {
+      const data = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+      const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
+      const categories = extensionContext ? extensionContext.globalState.get<Record<string, boolean>>('code-compa.notificationCategories', { agent_thinking: true, agent_actions: true }) : { agent_thinking: true, agent_actions: true };
+      
+      data.remoteMode = isRemoteEnabled;
+      data.notificationCategories = categories;
+      
+      fs.writeFileSync(lockPath, JSON.stringify(data, null, 2), 'utf8');
+      console.log('Successfully wrote Remote Mode settings to lockfile:', isRemoteEnabled, categories);
+    }
+  } catch (err) {
+    console.error('Failed to write settings to lockfile:', err);
+  }
 }
 
 function getBinaryPath(context: vscode.ExtensionContext): string {
@@ -454,6 +416,7 @@ function startSidecar(context: vscode.ExtensionContext) {
               vscode.l10n.t("Code Compa Bridge started successfully on port {0}", sidecarPort!)
             );
             restartAttempts = 0; // reset on success
+            writeLockfileSettings();
             sidebarProvider.updateContent();
             // Automatically register MCP server configs
             const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
@@ -473,6 +436,7 @@ function startSidecar(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(
               vscode.l10n.t("Code Compa Bridge is already running for this workspace on port {0}. Reusing instance.", sidecarPort!)
             );
+            writeLockfileSettings();
             sidebarProvider.updateContent();
             // Automatically register MCP server configs
             const isRemoteEnabled = extensionContext ? extensionContext.globalState.get<boolean>('code-compa.remoteModeEnabled', true) : true;
@@ -575,6 +539,7 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         if (extensionContext) {
           await extensionContext.globalState.update('code-compa.remoteModeEnabled', target);
         }
+        writeLockfileSettings(); // Write to lockfile after state change
         if (target) {
           const binPath = getBinaryPath(extensionContext!);
           const workspacePath = getWorkspacePath();
@@ -582,6 +547,18 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         } else {
           unregisterMcpServerAutomatically();
         }
+        this.updateContent();
+      } else if (message.command === 'toggleCategory') {
+        const categories = extensionContext ? extensionContext.globalState.get<Record<string, boolean>>('code-compa.notificationCategories', { agent_thinking: true, agent_actions: true }) : { agent_thinking: true, agent_actions: true };
+        if (message.category === 'agent_thinking') {
+          categories.agent_thinking = !categories.agent_thinking;
+        } else if (message.category === 'agent_actions') {
+          categories.agent_actions = !categories.agent_actions;
+        }
+        if (extensionContext) {
+          await extensionContext.globalState.update('code-compa.notificationCategories', categories);
+        }
+        writeLockfileSettings(); // Write to lockfile after category change
         this.updateContent();
       }
     });
@@ -661,6 +638,8 @@ class SidebarProvider implements vscode.WebviewViewProvider {
     const btnLabel = isRemoteEnabled ? 'Deactivate Remote Mode' : 'Activate Remote Mode';
     const statusColor = isRemoteEnabled ? '#10B981' : '#EF4444';
 
+    const categories = extensionContext ? extensionContext.globalState.get<Record<string, boolean>>('code-compa.notificationCategories', { agent_thinking: true, agent_actions: true }) : { agent_thinking: true, agent_actions: true };
+
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -717,6 +696,22 @@ class SidebarProvider implements vscode.WebviewViewProvider {
           <span class="status-val">${remoteModeStatus}</span>
         </div>
         <button class="toggle-btn" onclick="toggleMode()">${btnLabel}</button>
+
+        ${isRemoteEnabled ? `
+        <div class="categories-container" style="width: 100%; border-top: 1px solid var(--vscode-widget-border); margin-top: 12px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; align-self: flex-start;">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin-bottom: 4px;">Notify Categories</div>
+          
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="chk-thinking" ${categories.agent_thinking ? 'checked' : ''} onchange="toggleCategory('agent_thinking')" style="margin: 0; cursor: pointer;" />
+            <span>🧠 Thinking (Plans, research)</span>
+          </label>
+          
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="chk-actions" ${categories.agent_actions ? 'checked' : ''} onchange="toggleCategory('agent_actions')" style="margin: 0; cursor: pointer;" />
+            <span>⚡ Actions (Edits, runs)</span>
+          </label>
+        </div>
+        ` : ''}
       </div>
       <div class="info-card">
         <div class="info-row">
@@ -736,6 +731,9 @@ class SidebarProvider implements vscode.WebviewViewProvider {
         const vscode = acquireVsCodeApi();
         function toggleMode() {
           vscode.postMessage({ command: 'toggleRemoteMode' });
+        }
+        function toggleCategory(category) {
+          vscode.postMessage({ command: 'toggleCategory', category });
         }
       </script>
 
@@ -995,6 +993,34 @@ function activateCommandInterception(context: vscode.ExtensionContext) {
   };
 }
 
+function writeMcpInstructions(homeDir: string) {
+  try {
+    const mcpDir = path.join(homeDir, '.gemini', 'antigravity-ide', 'mcp', 'code-compa');
+    if (!fs.existsSync(mcpDir)) {
+      fs.mkdirSync(mcpDir, { recursive: true });
+    }
+    const instructionsPath = path.join(mcpDir, 'instructions.md');
+    const content = `# Code Compa MCP Server Guidelines
+
+When you are acting as an AI assistant in this workspace, you must prioritize using the custom \`code-compa\` MCP server tools instead of asking the user questions or confirming choices directly in the chat panel.
+
+- **Priority**: Always use MCP tools for user interactions (asking questions, input, executing commands) when they are available. Do not ask for confirmation or choice via plain text chat if an MCP tool can perform it.
+- **Pre-Invocation Chat Message (UX Rule)**: 
+  - **CRITICAL**: Before calling any \`code-compa\` MCP tool (such as \`ask_human_choice\`, \`ask_human_confirmation\`, or \`ask_human_input\`), you **must first** output a brief text message in the chat explaining to the user that they need to review or interact with their **Code Compa** companion app (e.g., *"I have sent a confirmation request to your Code Compa app..."*).
+  - This ensures that the user understands the context and expects to look at their mobile/companion interface.
+- **MCP Tools**:
+  - \`ask_human_confirmation\`: Use for yes/no or confirmation dialogs.
+  - \`ask_human_choice\`: Use when presenting multiple options for selection.
+  - \`ask_human_input\`: Use when open-ended user text input is needed.
+  - \`execute_terminal_command\`: Use when you need to execute system shell commands. **Always use this tool instead of the native IDE terminal/command execution tools** (like \`run_command\`) to delegate consent to the companion device and prevent native IDE permission prompts.
+`;
+    fs.writeFileSync(instructionsPath, content, 'utf8');
+    console.log(`[MCP Auto-Register] Successfully wrote instructions.md to: ${instructionsPath}`);
+  } catch (err) {
+    console.error(`[MCP Auto-Register] Failed to write instructions.md:`, err);
+  }
+}
+
 function registerMcpServerAutomatically(workspacePath: string, binaryPath: string) {
   const homeDir = os.homedir();
   const mcpConfig: any = {
@@ -1003,6 +1029,9 @@ function registerMcpServerAutomatically(workspacePath: string, binaryPath: strin
   };
 
   console.log(`[MCP Auto-Register] Triggering registration for workspace: ${workspacePath}`);
+
+  // Write instructions.md dynamically
+  writeMcpInstructions(homeDir);
 
   // 1. Configure in Antigravity IDE (Gemini)
   const antigravityConfigPath = path.join(homeDir, '.gemini', 'config', 'mcp_config.json');

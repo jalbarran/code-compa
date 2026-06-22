@@ -508,6 +508,13 @@ export class PostTelemetryEventRequest extends Message<PostTelemetryEventRequest
    */
   payloadJson = "";
 
+  /**
+   * e.g. "agent_thinking", "agent_actions"
+   *
+   * @generated from field: string category = 6;
+   */
+  category = "";
+
   constructor(data?: PartialMessage<PostTelemetryEventRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -521,6 +528,7 @@ export class PostTelemetryEventRequest extends Message<PostTelemetryEventRequest
     { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "payload_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "category", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PostTelemetryEventRequest {

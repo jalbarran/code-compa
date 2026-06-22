@@ -10,9 +10,11 @@ import (
 )
 
 type LockData struct {
-	Pid   int    `json:"pid"`
-	Port  int    `json:"port"`
-	Token string `json:"token"`
+	Pid                    int             `json:"pid"`
+	Port                   int             `json:"port"`
+	Token                  string          `json:"token"`
+	RemoteMode             bool            `json:"remoteMode"`
+	NotificationCategories map[string]bool `json:"notificationCategories"`
 }
 
 func GetLockfilePath(workspacePath string) string {

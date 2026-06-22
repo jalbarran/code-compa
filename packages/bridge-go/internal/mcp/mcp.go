@@ -19,6 +19,15 @@ import (
 )
 
 // MCP JSON-RPC messages schema structures
+var mcpWorkspacePath string
+
+type NotifyAgentStepArgs struct {
+	Category    string `json:"category"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	PayloadJson string `json:"payload_json,omitempty"`
+}
+
 type JsonRpcRequest struct {
 	JsonRpc string          `json:"jsonrpc"`
 	Method  string          `json:"method"`
@@ -116,6 +125,7 @@ type ExecuteCommandResult struct {
 
 // StartMcpServer starts the stdio loop for Model Context Protocol
 func StartMcpServer(workspacePath string) {
+	mcpWorkspacePath = workspacePath
 	// 1. Read lockfile to establish client connection
 	lockfilePath := lockfile.GetLockfilePath(workspacePath)
 	lockData, err := lockfile.ReadLockfile(lockfilePath)
@@ -257,6 +267,41 @@ func handleRequest(client apiv1connect.CompanionServiceClient, req *JsonRpcReque
 						},
 					},
 					Required: []string{"command"},
+				},
+			},
+			{
+				Name: "notify_agent_step",
+				Description: `Notify the user via their mobile companion app about a background step the agent is taking or thinking about. Use 'agent_thinking' for plans, ideas, or research, and 'agent_actions' for modifications, commands executed, or edits. This does not block the agent's execution.
+
+IMPORTANT: You MUST use this tool regularly to keep the user informed:
+1. At the start of each high-level task: notify with category='agent_thinking', explaining what you are going to do and why.
+2. Before reading/writing important files: notify with category='agent_actions'.
+3. Before running commands (if not using execute_terminal_command): notify with category='agent_actions'.
+4. Upon completing each sub-task: notify with category='agent_thinking' with the outcome.
+
+DO NOT saturate the user with micro-operations, only notify relevant progress steps.`,
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"category": map[string]interface{}{
+							"type": "string",
+							"enum": []string{"agent_thinking", "agent_actions"},
+							"description": "Category of notification.",
+						},
+						"title": map[string]string{
+							"type":        "string",
+							"description": "A short summary of what the agent is doing or thinking.",
+						},
+						"description": map[string]string{
+							"type":        "string",
+							"description": "Detailed explanation or additional context of the agent's progress.",
+						},
+						"payload_json": map[string]string{
+							"type":        "string",
+							"description": "Optional extra JSON properties/metadata as a stringified object.",
+						},
+					},
+					Required: []string{"category", "title", "description"},
 				},
 			},
 		}
@@ -498,22 +543,6 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			return
 		}
 
-		// Dispatch started telemetry event
-		payloadJsonStart, _ := json.Marshal(map[string]interface{}{
-			"command":   args.Command,
-			"directory": args.Directory,
-		})
-		_, _ = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
-			Type: "TERMINAL_COMMAND_STARTED",
-			Metadata: &apiv1.AgentMetadata{
-				Ide:       "VS Code",
-				AgentName: "MCP-Server-Go",
-			},
-			Title:       "Command Execution Started",
-			Description: fmt.Sprintf("Running: %s", args.Command),
-			PayloadJson: string(payloadJsonStart),
-		}))
-
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
 			cmd = exec.Command("cmd", "/c", args.Command)
@@ -539,34 +568,6 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 			}
 		}
 
-		// Dispatch ended telemetry event
-		statusText := "Completed successfully"
-		if exitCode != 0 {
-			statusText = fmt.Sprintf("Failed with exit code: %d", exitCode)
-		}
-		var outputStr string
-		if stderrBuf.Len() > 0 {
-			outputStr = stdoutBuf.String() + "\n" + stderrBuf.String()
-		} else {
-			outputStr = stdoutBuf.String()
-		}
-
-		payloadJsonEnd, _ := json.Marshal(map[string]interface{}{
-			"command":        args.Command,
-			"directory":      args.Directory,
-			"command_output": outputStr,
-		})
-		_, _ = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
-			Type: "TERMINAL_COMMAND_ENDED",
-			Metadata: &apiv1.AgentMetadata{
-				Ide:       "VS Code",
-				AgentName: "MCP-Server-Go",
-			},
-			Title:       "Command Execution Finished",
-			Description: fmt.Sprintf("Finished: %s (%s)", args.Command, statusText),
-			PayloadJson: string(payloadJsonEnd),
-		}))
-
 		resultPayload, _ := json.Marshal(ExecuteCommandResult{
 			Stdout:   stdoutBuf.String(),
 			Stderr:   stderrBuf.String(),
@@ -576,6 +577,63 @@ func handleToolCall(client apiv1connect.CompanionServiceClient, id interface{}, 
 		sendResponse(id, CallToolResult{
 			Content: []ContentBlock{
 				{Type: "text", Text: string(resultPayload)},
+			},
+		})
+
+	case "notify_agent_step":
+		var args NotifyAgentStepArgs
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			sendError(id, -32602, "Invalid arguments: "+err.Error())
+			return
+		}
+
+		// Read lockfile settings dynamically
+		lockfilePath := lockfile.GetLockfilePath(mcpWorkspacePath)
+		lockData, err := lockfile.ReadLockfile(lockfilePath)
+		if err == nil {
+			// Check if remoteMode is enabled
+			if !lockData.RemoteMode {
+				// Return immediate success without calling RPC
+				sendResponse(id, CallToolResult{
+					Content: []ContentBlock{
+						{Type: "text", Text: `{"status":"skipped","reason":"Remote Mode is disabled"}`},
+					},
+				})
+				return
+			}
+			// Check if the category is enabled
+			if lockData.NotificationCategories != nil {
+				if enabled, exists := lockData.NotificationCategories[args.Category]; exists && !enabled {
+					// Category disabled, skip
+					sendResponse(id, CallToolResult{
+						Content: []ContentBlock{
+							{Type: "text", Text: fmt.Sprintf(`{"status":"skipped","reason":"Category '%s' is disabled"}`, args.Category)},
+						},
+					})
+					return
+				}
+			}
+		}
+
+		_, err = client.PostTelemetryEvent(ctx, connect.NewRequest(&apiv1.PostTelemetryEventRequest{
+			Type:        args.Category,
+			Category:    args.Category,
+			Metadata: &apiv1.AgentMetadata{
+				Ide:       "VS Code",
+				AgentName: "MCP-Server-Go",
+			},
+			Title:       args.Title,
+			Description: args.Description,
+			PayloadJson: args.PayloadJson,
+		}))
+		if err != nil {
+			sendToolError(id, fmt.Sprintf("Failed to post telemetry event: %v", err))
+			return
+		}
+
+		sendResponse(id, CallToolResult{
+			Content: []ContentBlock{
+				{Type: "text", Text: `{"status":"success"}`},
 			},
 		})
 

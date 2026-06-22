@@ -94,7 +94,7 @@ export default function ScanScreen({ onScanSuccess }: ScanScreenProps) {
             style={{ width: 32, height: 32, borderRadius: 6 }}
             resizeMode="contain"
           />
-          <Text fos="$5" fow="bold" col="$color">Code Compa</Text>
+          <Text fos="$5" fow="bold" col="$color">{'Code Compa'}</Text>
         </XStack>
         <Button
           size="$3"

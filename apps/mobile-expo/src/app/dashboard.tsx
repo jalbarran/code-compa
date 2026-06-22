@@ -8,12 +8,24 @@ import { useRouter } from 'expo-router';
 import { useConnectionStore, HistoryEntry } from '../store/useConnectionStore';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TelemetryLogItem } from '../components/TelemetryLogItem';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { ip, port, status, queue, history, telemetryLogs, disconnect, respond } = useConnectionStore();
+  const {
+    ip,
+    port,
+    status,
+    queue,
+    history,
+    telemetryLogs,
+    notificationFilter,
+    setNotificationFilter,
+    disconnect,
+    respond
+  } = useConnectionStore();
   const [feedback, setFeedback] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<HistoryEntry | null>(null);
@@ -78,7 +90,14 @@ export default function DashboardScreen() {
             resizeMode="contain"
           />
           <YStack>
-            <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
+            <XStack ai="center" gap="$2">
+              <Text fos="$6" fow="bold" col="$color">{'Code Compa'}</Text>
+              {telemetryLogs.length > 0 && (
+                <XStack bg="$red10" px="$2" py="$0.5" br="$4" ai="center" jc="center">
+                  <Text col="white" fos="$1" fow="bold">{telemetryLogs.length}</Text>
+                </XStack>
+              )}
+            </XStack>
             <XStack ai="center" gap="$2">
               <Circle size={10} bg={getStatusColor()} />
               <Text col="$colorMuted" fos="$2">
@@ -329,53 +348,50 @@ export default function DashboardScreen() {
           </YStack>
         )}
 
-        {telemetryLogs.length > 0 && (
-          <YStack mt="$6" gap="$3">
-            <Text fow="bold" fos="$4" col="$colorMuted">{'Live Telemetry Logs'}</Text>
-            <Separator />
-            {telemetryLogs.map((log) => {
-              let icon = 'ℹ️';
-              let iconBg = '$backgroundPress';
-              if (log.type === 'FILE_CREATED') { icon = '📄'; iconBg = 'rgba(0, 255, 0, 0.1)'; }
-              else if (log.type === 'FILE_MUTATED') { icon = '📝'; iconBg = 'rgba(255, 165, 0, 0.1)'; }
-              else if (log.type === 'FILE_DELETED') { icon = '🗑️'; iconBg = 'rgba(255, 0, 0, 0.1)'; }
-              else if (log.type === 'TERMINAL_COMMAND_STARTED') { icon = '💻'; iconBg = 'rgba(0, 128, 255, 0.1)'; }
-              else if (log.type === 'TERMINAL_COMMAND_ENDED') { icon = '✅'; iconBg = 'rgba(0, 255, 0, 0.1)'; }
+        {telemetryLogs.length > 0 && (() => {
+          const filteredLogs = telemetryLogs.filter((log) => {
+            if (notificationFilter === 'all') return true;
+            return log.type === notificationFilter;
+          });
 
-              return (
-                <Card key={log.eventId} borderWidth={1} p="$3" theme="dark" bg="$backgroundPress">
-                  <XStack gap="$3" ai="center">
-                    <Circle size={36} bg={iconBg as any} jc="center" ai="center">
-                      <Text fos="$4">{icon}</Text>
-                    </Circle>
-                    <YStack f={1}>
-                      <Text fos="$3" fow="bold" col="$color">
-                        {log.payload?.title || log.type}
-                      </Text>
-                      <Text fos="$2" col="$colorMuted" numberOfLines={2}>
-                        {log.payload?.description}
-                      </Text>
-                      {log.payload?.command && (
-                        <Text fos="$1" col="$green10" ff="$mono" mt="$1" numberOfLines={1} bg="$background" p="$1" br="$1">
-                          {log.payload.command}
-                        </Text>
-                      )}
-                      {log.payload?.commandOutput ? (
-                        <ScrollView style={{ maxHeight: 120, marginTop: 8 }} nestedScrollEnabled>
-                          <YStack bg="$background" p="$2" br="$2">
-                            <Text fos="$1" col="$color" ff="$mono">
-                              {log.payload.commandOutput}
-                            </Text>
-                          </YStack>
-                        </ScrollView>
-                      ) : null}
-                    </YStack>
-                  </XStack>
-                </Card>
-              );
-            })}
-          </YStack>
-        )}
+          return (
+            <YStack mt="$6" gap="$3">
+              <XStack jc="space-between" ai="center">
+                <Text fow="bold" fos="$4" col="$colorMuted">{'Live Telemetry Logs'}</Text>
+                <XStack gap="$1.5">
+                  <Button
+                    size="$2"
+                    bg={notificationFilter === 'all' ? '$blue10' : '$backgroundPress'}
+                    color={notificationFilter === 'all' ? 'white' : '$color'}
+                    onPress={() => setNotificationFilter('all')}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    size="$2"
+                    bg={notificationFilter === 'agent_thinking' ? '$blue10' : '$backgroundPress'}
+                    color={notificationFilter === 'agent_thinking' ? 'white' : '$color'}
+                    onPress={() => setNotificationFilter('agent_thinking')}
+                  >
+                    🧠 Thinking
+                  </Button>
+                  <Button
+                    size="$2"
+                    bg={notificationFilter === 'agent_actions' ? '$blue10' : '$backgroundPress'}
+                    color={notificationFilter === 'agent_actions' ? 'white' : '$color'}
+                    onPress={() => setNotificationFilter('agent_actions')}
+                  >
+                    ⚡ Actions
+                  </Button>
+                </XStack>
+              </XStack>
+              <Separator />
+              {filteredLogs.map((log) => (
+                <TelemetryLogItem key={log.eventId} log={log} />
+              ))}
+            </YStack>
+          );
+        })()}
       </ScrollView>
 
       {/* Footer controls */}

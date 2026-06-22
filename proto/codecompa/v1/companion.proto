@@ -81,6 +81,7 @@ message PostTelemetryEventRequest {
   string title = 3;
   string description = 4;
   string payload_json = 5; // Extra dynamic properties
+  string category = 6; // e.g. "agent_thinking", "agent_actions"
 }
 
 message PostTelemetryEventResponse {

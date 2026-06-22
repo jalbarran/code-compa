@@ -39,6 +39,7 @@ interface ConnectionState {
   userTheme: UserTheme;
   userLanguage: UserLanguage;
   hapticsEnabled: boolean;
+  notificationFilter: 'all' | 'agent_thinking' | 'agent_actions';
 
   connect: (ip: string, port: number, token: string) => Promise<void>;
   disconnect: () => void;
@@ -48,6 +49,7 @@ interface ConnectionState {
   setTheme: (theme: UserTheme) => void;
   setLanguage: (lang: UserLanguage) => void;
   setHapticsEnabled: (enabled: boolean) => void;
+  setNotificationFilter: (filter: 'all' | 'agent_thinking' | 'agent_actions') => void;
 }
 
 let activeAbortController: AbortController | null = null;
@@ -66,10 +68,12 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   userTheme: 'system',
   userLanguage: 'en',
   hapticsEnabled: true,
+  notificationFilter: 'all',
 
   setTheme: (theme) => set({ userTheme: theme }),
   setLanguage: (lang) => set({ userLanguage: lang }),
   setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
+  setNotificationFilter: (filter) => set({ notificationFilter: filter }),
 
   connect: async (ip, port, token) => {
     if (activeAbortController) {
@@ -101,7 +105,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         try {
           for await (const event of stream) {
             set((state) => {
-              const isTelemetry = event.type.startsWith('FILE_') || event.type.startsWith('TERMINAL_') || event.type.includes('TEST_EVENT');
+              const isTelemetry = event.type.startsWith('FILE_') || event.type.startsWith('TERMINAL_') || event.type.includes('TEST_EVENT') || event.type === 'agent_thinking' || event.type === 'agent_actions';
               if (isTelemetry) {
                 if (state.telemetryLogs.some((e) => e.eventId === event.eventId)) {
                   return state;
