@@ -51,7 +51,13 @@ export default function SettingsScreen() {
         <Button
           size="$3"
           variant="outlined"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/');
+            }
+          }}
           circular
         >
           {'←'}

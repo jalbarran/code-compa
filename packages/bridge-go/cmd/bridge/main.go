@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -122,7 +124,23 @@ func main() {
 	if *webDir != "" {
 		if fi, err := os.Stat(*webDir); err == nil && fi.IsDir() {
 			webEnabled = true
-			mux.Handle("/", http.FileServer(http.Dir(*webDir)))
+			fs := http.FileServer(http.Dir(*webDir))
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				// Don't intercept connect rpc calls
+				if strings.HasPrefix(r.URL.Path, "/codecompa.v1.CompanionService/") {
+					return
+				}
+				// Clean the path and check if the static file exists
+				cleanedPath := filepath.Clean(r.URL.Path)
+				fpath := filepath.Join(*webDir, cleanedPath)
+				info, err := os.Stat(fpath)
+				if os.IsNotExist(err) || (err == nil && info.IsDir() && !fileExists(filepath.Join(fpath, "index.html"))) {
+					// Fallback to index.html for client-side routing (SPA)
+					http.ServeFile(w, r, filepath.Join(*webDir, "index.html"))
+					return
+				}
+				fs.ServeHTTP(w, r)
+			})
 		}
 	}
 
@@ -160,4 +178,12 @@ func main() {
 	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
